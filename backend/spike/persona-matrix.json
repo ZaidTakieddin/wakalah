@@ -1,0 +1,344 @@
+﻿{
+    "+99999991000":  {
+                         "sim_swap":  {
+                                          "body":  "{\"swapped\":true}",
+                                          "status":  200
+                                      },
+                         "dev_swap":  {
+                                          "body":  "{\"swapped\":true}",
+                                          "status":  200
+                                      },
+                         "fwd":  {
+                                     "body":  "{\"active\":true}",
+                                     "status":  200
+                                 },
+                         "recycled":  {
+                                          "body":  "{\"phoneNumberRecycled\":true}",
+                                          "status":  200
+                                      },
+                         "tenure":  {
+                                        "body":  "{\"tenureDateCheck\":true,\"contractType\":\"PAYG\"}",
+                                        "status":  200
+                                    },
+                         "conn":  {
+                                      "body":  "{\"connectivityStatus\":\"CONNECTED_SMS\"}",
+                                      "status":  200
+                                  },
+                         "roam":  {
+                                      "body":  "{\"device\":{\"phoneNumber\":\"+99999991000\"},\"lastStatusTime\":\"2026-07-07T10:26:41.611264Z\",\"roaming\":true,\"countryCode\":36,\"countryName\":[\"HU\"]}",
+                                      "status":  200
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:26:42.844264Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "{\"verificationResult\":\"FALSE\",\"lastLocationTime\":\"2026-07-07T10:26:43.297999\"}",
+                                            "status":  200
+                                        }
+                     },
+    "+99999991001":  {
+                         "sim_swap":  {
+                                          "body":  "{\"swapped\":false}",
+                                          "status":  200
+                                      },
+                         "dev_swap":  {
+                                          "body":  "{\"swapped\":false}",
+                                          "status":  200
+                                      },
+                         "fwd":  {
+                                     "body":  "{\"active\":false}",
+                                     "status":  200
+                                 },
+                         "recycled":  {
+                                          "body":  "{\"phoneNumberRecycled\":false}",
+                                          "status":  200
+                                      },
+                         "tenure":  {
+                                        "body":  "{\"tenureDateCheck\":false,\"contractType\":\"PAYG\"}",
+                                        "status":  200
+                                    },
+                         "conn":  {
+                                      "body":  "{\"connectivityStatus\":\"CONNECTED_DATA\"}",
+                                      "status":  200
+                                  },
+                         "roam":  {
+                                      "body":  "{\"device\":{\"phoneNumber\":\"+99999991001\"},\"lastStatusTime\":\"2026-07-07T10:26:47.097832Z\",\"roaming\":false}",
+                                      "status":  200
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:26:47.561510Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "{\"verificationResult\":\"TRUE\",\"lastLocationTime\":\"2026-07-07T10:26:47.997739\"}",
+                                            "status":  200
+                                        }
+                     },
+    "+99999990400":  {
+                         "sim_swap":  {
+                                          "body":  "",
+                                          "status":  400
+                                      },
+                         "dev_swap":  {
+                                          "body":  "",
+                                          "status":  400
+                                      },
+                         "fwd":  {
+                                     "body":  "",
+                                     "status":  400
+                                 },
+                         "recycled":  {
+                                          "body":  "",
+                                          "status":  400
+                                      },
+                         "tenure":  {
+                                        "body":  "",
+                                        "status":  400
+                                    },
+                         "conn":  {
+                                      "body":  "",
+                                      "status":  400
+                                  },
+                         "roam":  {
+                                      "body":  "",
+                                      "status":  400
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:26:51.873807Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "",
+                                            "status":  500
+                                        }
+                     },
+    "+99999990404":  {
+                         "sim_swap":  {
+                                          "body":  "",
+                                          "status":  404
+                                      },
+                         "dev_swap":  {
+                                          "body":  "",
+                                          "status":  404
+                                      },
+                         "fwd":  {
+                                     "body":  "",
+                                     "status":  404
+                                 },
+                         "recycled":  {
+                                          "body":  "",
+                                          "status":  404
+                                      },
+                         "tenure":  {
+                                        "body":  "",
+                                        "status":  404
+                                    },
+                         "conn":  {
+                                      "body":  "",
+                                      "status":  404
+                                  },
+                         "roam":  {
+                                      "body":  "",
+                                      "status":  404
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:26:56.379467Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "",
+                                            "status":  500
+                                        }
+                     },
+    "+99999990422":  {
+                         "sim_swap":  {
+                                          "body":  "",
+                                          "status":  422
+                                      },
+                         "dev_swap":  {
+                                          "body":  "",
+                                          "status":  422
+                                      },
+                         "fwd":  {
+                                     "body":  "",
+                                     "status":  422
+                                 },
+                         "recycled":  {
+                                          "body":  "",
+                                          "status":  422
+                                      },
+                         "tenure":  {
+                                        "body":  "",
+                                        "status":  422
+                                    },
+                         "conn":  {
+                                      "body":  "",
+                                      "status":  422
+                                  },
+                         "roam":  {
+                                      "body":  "",
+                                      "status":  422
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:27:01.675888Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "",
+                                            "status":  500
+                                        }
+                     },
+    "+99999990500":  {
+                         "sim_swap":  {
+                                          "body":  "",
+                                          "status":  500
+                                      },
+                         "dev_swap":  {
+                                          "body":  "",
+                                          "status":  500
+                                      },
+                         "fwd":  {
+                                     "body":  "",
+                                     "status":  500
+                                 },
+                         "recycled":  {
+                                          "body":  "",
+                                          "status":  500
+                                      },
+                         "tenure":  {
+                                        "body":  "",
+                                        "status":  500
+                                    },
+                         "conn":  {
+                                      "body":  "",
+                                      "status":  500
+                                  },
+                         "roam":  {
+                                      "body":  "",
+                                      "status":  500
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:27:06.441527Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "",
+                                            "status":  500
+                                        }
+                     },
+    "+99999990502":  {
+                         "sim_swap":  {
+                                          "body":  "{\"messages\":\"The API is unreachable, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (not working)\"}",
+                                          "status":  502
+                                      },
+                         "dev_swap":  {
+                                          "body":  "{\"messages\":\"The API is unreachable, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (not working)\"}",
+                                          "status":  502
+                                      },
+                         "fwd":  {
+                                     "body":  "{\"messages\":\"The API is unreachable, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (not working)\"}",
+                                     "status":  502
+                                 },
+                         "recycled":  {
+                                          "body":  "{\"messages\":\"The API is unreachable, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (not working)\"}",
+                                          "status":  502
+                                      },
+                         "tenure":  {
+                                        "body":  "{\"messages\":\"The API is unreachable, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (not working)\"}",
+                                        "status":  502
+                                    },
+                         "conn":  {
+                                      "body":  "{\"messages\":\"The API is unreachable, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (not working)\"}",
+                                      "status":  502
+                                  },
+                         "roam":  {
+                                      "body":  "{\"messages\":\"The API is unreachable, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (not working)\"}",
+                                      "status":  502
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:27:12.631903Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "",
+                                            "status":  500
+                                        }
+                     },
+    "+99999990503":  {
+                         "sim_swap":  {
+                                          "body":  "",
+                                          "status":  503
+                                      },
+                         "dev_swap":  {
+                                          "body":  "",
+                                          "status":  503
+                                      },
+                         "fwd":  {
+                                     "body":  "",
+                                     "status":  503
+                                 },
+                         "recycled":  {
+                                          "body":  "",
+                                          "status":  503
+                                      },
+                         "tenure":  {
+                                        "body":  "",
+                                        "status":  503
+                                    },
+                         "conn":  {
+                                      "body":  "",
+                                      "status":  503
+                                  },
+                         "roam":  {
+                                      "body":  "",
+                                      "status":  503
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:27:17.775676Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "",
+                                            "status":  500
+                                        }
+                     },
+    "+99999990504":  {
+                         "sim_swap":  {
+                                          "body":  "{\"messages\":\"The request to the API has timed out. Please try again later, or if the issue persists, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (took too long to respond)\"}",
+                                          "status":  504
+                                      },
+                         "dev_swap":  {
+                                          "body":  "{\"messages\":\"The request to the API has timed out. Please try again later, or if the issue persists, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (took too long to respond)\"}",
+                                          "status":  504
+                                      },
+                         "fwd":  {
+                                     "body":  "{\"messages\":\"The request to the API has timed out. Please try again later, or if the issue persists, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (took too long to respond)\"}",
+                                     "status":  504
+                                 },
+                         "recycled":  {
+                                          "body":  "{\"messages\":\"The request to the API has timed out. Please try again later, or if the issue persists, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (took too long to respond)\"}",
+                                          "status":  504
+                                      },
+                         "tenure":  {
+                                        "body":  "{\"messages\":\"The request to the API has timed out. Please try again later, or if the issue persists, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (took too long to respond)\"}",
+                                        "status":  504
+                                    },
+                         "conn":  {
+                                      "body":  "{\"messages\":\"The request to the API has timed out. Please try again later, or if the issue persists, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (took too long to respond)\"}",
+                                      "status":  504
+                                  },
+                         "roam":  {
+                                      "body":  "{\"messages\":\"The request to the API has timed out. Please try again later, or if the issue persists, please contact the API provider\", \"info\": \"Your Client (working) ---\u003e Gateway (working) ---\u003e API (took too long to respond)\"}",
+                                      "status":  504
+                                  },
+                         "loc":  {
+                                     "body":  "{\"lastLocationTime\":\"2026-07-07T10:27:23.412538Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                                     "status":  200
+                                 },
+                         "verify_bud":  {
+                                            "body":  "",
+                                            "status":  500
+                                        }
+                     }
+}

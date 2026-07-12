@@ -1,0 +1,82 @@
+﻿{
+    "_meta":  {
+                  "mutations":  true,
+                  "base":  "https://network-as-code.p-eu.rapidapi.com",
+                  "phone":  "+3670123456",
+                  "ts":  "2026-07-07T10:12:33.9525499Z"
+              },
+    "sim_swap_check":  {
+                           "body":  "{\"swapped\":true}",
+                           "status":  200
+                       },
+    "sim_swap_retrieve_date":  {
+                                   "body":  "{\"latestSimChange\":\"2026-07-07T10:02:35.488153Z\"}",
+                                   "status":  200
+                               },
+    "device_swap_check":  {
+                              "body":  "{\"swapped\":true}",
+                              "status":  200
+                          },
+    "reachability":  {
+                         "body":  "{\"device\":{\"phoneNumber\":\"+3670123456\"},\"reachable\":true,\"connectivity\":[\"SMS\",\"DATA\"],\"lastStatusTime\":\"2026-07-07T10:12:37Z\"}",
+                         "status":  200
+                     },
+    "roaming":  {
+                    "body":  "{\"device\":{\"phoneNumber\":\"+3670123456\"},\"lastStatusTime\":\"2026-07-07T10:11:39Z\",\"roaming\":true,\"countryCode\":244,\"countryName\":[\"FI\"]}",
+                    "status":  200
+                },
+    "connectivity":  {
+                         "body":  "{\"connectivityStatus\":\"CONNECTED_DATA\"}",
+                         "status":  200
+                     },
+    "location_retrieve":  {
+                              "body":  "{\"lastLocationTime\":\"2026-07-07T10:12:41.229270Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                              "status":  200
+                          },
+    "location_verify":  {
+                            "body":  "{\"verificationResult\":\"TRUE\",\"lastLocationTime\":\"2026-07-07T10:12:41.709682\"}",
+                            "status":  200
+                        },
+    "congestion_query":  {
+                             "body":  "[{\"timeIntervalStart\":\"2026-07-07T10:07:42.228649Z\",\"timeIntervalStop\":\"2026-07-07T10:12:42.228649Z\",\"congestionLevel\":\"High\"},{\"timeIntervalStart\":\"2026-07-07T10:02:42.228649Z\",\"timeIntervalStop\":\"2026-07-07T10:07:42.228649Z\",\"congestionLevel\":\"Medium\"}]",
+                             "status":  200
+                         },
+    "tenure_check":  {
+                         "body":  "{\"tenureDateCheck\":true,\"contractType\":\"PAYG\"}",
+                         "status":  200
+                     },
+    "number_recycling_check":  {
+                                   "body":  "{\"phoneNumberRecycled\":true}",
+                                   "status":  200
+                               },
+    "call_forwarding_unconditional":  {
+                                          "body":  "{\"active\":true}",
+                                          "status":  200
+                                      },
+    "kyc_match_minimal":  {
+                              "body":  "{\"nameMatch\":\"false\",\"birthdateMatch\":\"false\"}",
+                              "status":  200
+                          },
+    "age_verification":  {
+                             "body":  "{\"ageCheck\":\"true\",\"verifiedStatus\":true,\"identityMatchScore\":60}",
+                             "status":  200
+                         },
+    "number_verification_no_code":  {
+                                        "body":  "",
+                                        "status":  401
+                                    },
+    "qod_create":  {
+                       "body":  "",
+                       "status":  400
+                   },
+    "geofence_create":  {
+                            "body":  "{\"protocol\":\"HTTP\",\"sink\":\"https://example.com/nac-sink\",\"types\":[\"org.camaraproject.geofencing-subscriptions.v0.area-entered\"],\"config\":{\"subscriptionDetail\":{\"device\":{\"phoneNumber\":\"+3670123456\"},\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":25.276987,\"longitude\":55.296249},\"radius\":2000}},\"subscriptionExpireTime\":\"2026-07-07T11:12:46Z\",\"subscriptionMaxEvents\":5,\"initialEvent\":true},\"id\":\"d20ec3eb-5dd4-43b1-8eaf-1c807edcab3f\",\"startsAt\":\"2026-07-07T10:12:46.452150Z\"}",
+                            "status":  201
+                        },
+    "geofence_delete":  {
+                            "body":  [
+
+                                     ],
+                            "status":  204
+                        }
+}
