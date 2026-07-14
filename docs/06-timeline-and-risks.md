@@ -67,3 +67,4 @@ Every number below is directionally right but must be re-verified with a 2026 so
 - Agent-payments landscape names/status (Google AP2, OpenAI/Stripe ACP, Visa/Mastercard agent programs) — Wakalah "why now"
 - Open Gateway adoption (operator groups/networks signed, 2026 figures) + Nokia NaC partner count (75+ per MWC26 release)
 - Data-protection law names: Saudi PDPL, Qatar PDPPL, UAE PDPL
+- Per-call pricing anchors for the unit-economics slide (doc 04 §7): CAMARA operator pricing is negotiated/not public — anchor via aggregator list prices (Twilio Lookup/Verify ≈ $0.05, SIM-swap data add-ons $0.01–0.10 at volume; Vonage/Infobip rate cards) and, if possible, an informal quote from a regional MNO contact; RapidAPI/NaC quota on our plan
