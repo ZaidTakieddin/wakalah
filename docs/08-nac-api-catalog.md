@@ -31,6 +31,8 @@ Error body shape (canonical): `{"status": 4xx, "code": "INVALID_ARGUMENT|UNAUTHE
 4. `POST {token_endpoint}` with `client_id, client_secret, grant_type=authorization_code, code` → `{access_token}` (single-use per verification)
 5. `POST .../number-verification/v0/verify` with `Authorization: Bearer {token}` + `{"phoneNumber": "+..."}` → `{"devicePhoneNumberVerified": bool}`; or `GET .../device-phone-number` → the number itself
 
+**✅ Whole recipe executed successfully on the sandbox (Jul 14, `backend/spike/nv_flow_probe.ps1`):** auto-approved redirect chain (no browser/login needed on simulators), arbitrary redirect_uri accepted, verify returned `devicePhoneNumberVerified: true`. Tokens are single-use — mint per verification.
+
 QoD extras from the overview: `GET /qod/v0/sessions?device=...` lists sessions; `POST /qod/v0/sessions/{id}/extend` with `{"requestedAdditionalDuration": s}`; sessions expire on their own.
 
 ## 1. Identity & anti-fraud family (the underexploited goldmine)
