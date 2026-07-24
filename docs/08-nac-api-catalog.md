@@ -2,6 +2,12 @@
 
 *Everything the "RapidAPI Hub – Network as Code" MCP exposes, organized for concept/gate decisions. Request shapes come straight from the tool schemas (authoritative). Response shapes are per CAMARA specs — the MCP hides response bodies, so **every response shape below carries an implicit "confirm on first live call"** (the spike script records them into `spike-results.json`).*
 
+> **Wakalah tiering (Jul 14, doc 09 D23).** For the build, the identity APIs split into a **core spine** always run, and an **escalation toolkit** the agent's risk-tiered verification plan pulls only when warranted (doc 04 §3):
+> - **Core spine (4):** Number Verification · KYC Match · SIM Swap · Device Swap.
+> - **Escalation toolkit (6):** Call Forwarding Signal · Number Recycling · Tenure · Device Reachability · Roaming Status · Location Verification.
+> - **Roadmap:** KYC Fill-in · Age Verification.
+> All 18 operations are proven live on the sandbox (spike Jul 14) — tiering is a *demo-focus and cost* decision (per-risk-tier signal-TTL caching), not a capability limit.
+
 ## 0. How the platform hangs together
 
 - **Two auth patterns.** Network-intelligence APIs (reachability, roaming, connectivity, location, congestion, QoD, geofencing, slices) authenticate app-side (RapidAPI key → app token) — callable server-to-server with just a device identifier. **Identity APIs carry an `authorization`/`code` parameter** (Number Verification, KYC Match, KYC Fill-in, Age Verification, Tenure, Number Recycling) — CAMARA's consent model: a **three-legged token from the operator's auth flow** is expected. SIM Swap, Device Swap, and Call Forwarding Signal take a bare `phoneNumber` (no auth param in schema) — likely app-token callable. **The single most important spike question: what does NaC's sandbox accept for the three-legged family?**

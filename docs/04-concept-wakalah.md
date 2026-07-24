@@ -1,113 +1,156 @@
 # 04 — Concept Spec: Wakalah (وكالة)
 
-**One-liner:** Wakalah issues signed, expiring **trust tokens** that bind an AI agent to a verified, present, un-hijacked human principal via telecom signals — so banks, merchants, and remittance providers can accept agent-initiated transactions.
+> **v2 (Jul 14)** — hardened after the project review (doc 09 D23). The concept is unchanged; what changed is that the AI's reasoning is now **load-bearing and visible** (risk classification → dynamic verification plan), the token is **sender-constrained**, and every overclaim is stripped. Superseded phrasing from v1 is noted inline where it matters.
+
+**One-liner:** Wakalah issues signed, expiring, **sender-constrained trust tokens** that bind an AI agent to a **network-verified, un-hijacked** human principal via telecom signals — so banks, merchants, and remittance providers can accept agent-initiated transactions.
 
 **Theme:** 4 — Secure Fintech, Payments & Anti-Fraud Innovation. (Theme 1, Trusted Digital Identity, is the adjacent fit — declare 4, mention 1 once.)
 
-**Name:** *Wakalah* is the classical Islamic-finance **agency contract** — a principal (muwakkil) formally authorizes an agent (wakeel) to act on their behalf. We are digitizing a trust structure this region has operated for fourteen centuries, for the newest kind of agent. This framing is the answer to the "regional relevance" rubric line — it makes a global infrastructure play culturally *ours*, and it will land hard at MWC Doha.
+**Name:** *Wakalah* is the classical Islamic-finance **agency contract** — a principal (muwakkil) formally authorizes an agent (wakeel) to act on their behalf. We are digitizing a trust structure this region has operated for fourteen centuries, for the newest kind of agent. This is the answer to the "regional relevance" rubric line, and it lands hard at MWC Doha.
+
+**Positioning (review pt 20):** Wakalah is a **trust layer for *other* AI agents** that happens to *contain its own* reasoning agent. It satisfies the mandatory AI-agent requirement without becoming a chatbot or shopping assistant — the agent's job is risk analysis, verification planning, and evidence interpretation, not conversation.
 
 ## 1. Problem
 
-It's 2026: AI agents book, buy, and send money on people's behalf. Payment rails are racing to authorize them (Google's AP2 mandates, OpenAI/Stripe's agentic-commerce protocol, Visa/Mastercard agent programs — *verify current names/status before deck-final*). But every one of those schemes authorizes **the agent's credentials**. None of them can answer the question the receiving side actually cares about:
+It's 2026: AI agents book, buy, and send money on people's behalf. Payment rails are racing to authorize them (Google's AP2 mandates, OpenAI/Stripe's agentic-commerce protocol, Visa/Mastercard agent programs — *verify current names/status before deck-final*). But every one of those schemes authorizes **the agent's credentials**. None can answer the question the receiving side actually cares about:
 
-> Is this agent still acting for a real, present, un-hijacked human — right now?
+> Is this agent still acting for a real, un-hijacked human — right now?
 
-Stolen credentials plus a cloned agent look identical to the real thing at the protocol layer. The only ubiquitous, hard-to-fake anchor tying software to a physical person is the **mobile network**: the SIM in their pocket, its swap history, the device it lives in, its reachability. Operators own that signal — and today it's not wired into agent commerce at all.
+Stolen credentials plus a cloned agent look identical at the protocol layer. The only ubiquitous, hard-to-fake anchor tying software to a physical person is the **mobile network**: the SIM, its swap history, the device, its reachability. Operators own that signal — and today it's not wired into agent commerce at all.
 
-**Flagship regional wound:** remittances. GCC corridors are the world's largest (tens of billions of USD yearly from Saudi/UAE/Qatar to Egypt, South Asia, the Levant — *verify figures*). Remittance fraud playbooks start with a SIM swap; agent-mediated remittances will inherit them on day one, at machine speed. Secondary use case (round-2 addition): **travel banking** — Device Roaming Status + Location Verification lets a bank distinguish "customer genuinely abroad" from "fraudster with a swapped SIM," killing false declines for the region's enormous expat/diaspora population.
+**Flagship regional wound:** remittances. GCC corridors are the world's largest (tens of billions USD yearly to Egypt, South Asia, the Levant — *verify figures*). Remittance fraud playbooks start with a SIM swap; agent-mediated remittances inherit them on day one, at machine speed. Secondary: **travel banking** — Roaming + Location lets a bank tell "customer genuinely abroad" from "fraudster with a swapped SIM," killing false declines.
 
-## 2. The core object: an expiring, revocable trust token
+## 2. The core object: a sender-constrained, revocable trust token
+
+The v1 token was a signed, scoped JWT. The review (pts 10–12) hardened it so a **stolen token alone is useless**: the token is **bound to the agent's public key**, and the agent must **prove possession** of the matching private key on every request.
 
 ```
-WAKALAH TOKEN  (signed JWT)
-├─ principal:  hash(MSISDN) + operator attestation ref
-├─ agent:      agent ID + public key fingerprint
-├─ scope:      "remittance ≤ 2,000 QAR/mo → beneficiary X"
-├─ risk:       score + evidence refs (nv ✓, simswap ✓ 190d, device ✓)
-├─ issued/expires:  TTL hours-to-days, renewable
-└─ revocation: event-driven (see Sentinel)
+WAKALAH TOKEN  (signed JWT, sender-constrained)
+├─ principalId          (hashed MSISDN + operator attestation ref)
+├─ agentId  +  agentKeyFingerprint     ← token bound to this keypair
+├─ action / amountLimit / currency / beneficiaryRestrictions
+├─ scope                "remittance ≤ 2,000 QAR/mo → beneficiary X"
+├─ riskScore  +  evidenceRefs          (nv ✓, kyc ✓, simSwap 190d, device ✓)
+├─ policyVersion  +  tokenId (jti)  +  audience (aud)
+└─ issued / expires     (short TTL, renewable)
 ```
 
-Merchants/PSPs call one **verify endpoint** before honoring an agent-initiated transaction. The differentiator vs. every existing SIM-swap-check product **and** vs. Africa Ignite's winning TrustScore: **continuous revocation** — Wakalah subscribes to SIM-swap events, so a hijack *after* issuance kills the token mid-flight. Not a point-in-time score; a standing, breathing mandate. (If NaC event subscriptions disappoint in the spike, fast polling emulates it — the demo still lands.)
+- **Proof of possession (pt 11):** the agent signs each transaction request with its private key; Wakalah verifies against the registered `agentKeyFingerprint`. A replayed token without a fresh valid signature is rejected.
+- **Rich mandate (pt 12):** `amountLimit`, `beneficiaryRestrictions`, `audience`, and `jti` stop a valid token from being reused for an *unauthorized* action or at the wrong merchant.
+- **Revocation (pt 8–9):** event-driven — see §4 Sentinel. The event is a **machine-to-machine notification from the operator to the Wakalah backend**; Wakalah revokes automatically. The attacker is **never** asked whether to continue.
 
-## 3. API orchestration map — the full identity bureau (updated Jul 6 after the catalog, doc 08)
+Merchants/PSPs call one **verify endpoint** before honoring an agent-initiated transaction.
 
-The catalog surfaced six identity APIs the hackathon brief never listed. Wakalah is no longer "SIM-swap plus a token" — it orchestrates the **operator's entire identity stack**, grouped by the trust dimension each signal answers:
+**Scoping note (pt 11, for a 2-person build):** design the keypair binding into the token model and the deck now (cheap, high-credibility); implement the signature-verify path in the prototype if time allows, else present it as designed with the JWT binding shown. It must not eat the core demo.
 
-| # | NaC API | Trust dimension | Role in the chain |
+## 3. API orchestration — a core spine + a risk-triggered escalation toolkit
+
+The catalog (doc 08) surfaced six identity APIs the brief never listed. The review (pts 6–7) rightly says a focused MVP beats ten fragile integrations — but our differentiation *is* the depth of orchestration. The synthesis: a **guaranteed 4-API spine** for every mandate, plus a **6-signal escalation toolkit the agent pulls only when risk warrants**. That is *more* agentic than calling ten every time — the agent chooses, and the demo shows it choosing.
+
+**Core spine (MVP — runs on essentially every mandate/verification):**
+
+| # | NaC API | Trust dimension | Role |
 |---|---|---|---|
-| 1 | Number Verification | **Binding** | Mandate creation: cryptographically ties the principal's SIM to the agent authorization (needs 3-legged consent flow — spike item #1) |
-| 2 | **KYC Match** | **Identity** | Mandate proofing: claimed name/ID-document matches the SIM's registered owner — the wakeel acts for a *named* muwakkil, not just a number |
-| 3 | SIM Swap (check + events) | **Hijack** | Recent swap blocks issuance; swap event **revokes** outstanding tokens mid-flight |
-| 4 | Device Swap | **Hijack** | Same SIM, new hardware → step-up re-verification |
-| 5 | **Call Forwarding Signal** | **Hijack** | Active unconditional forwarding = OTP/voice interception risk → block voice-verified scopes (vishing precondition nobody else checks) |
-| 6 | **Number Recycling** | **Continuity** | "Is this still the same human?" — kills the reassigned-number takeover class before token renewal |
-| 7 | **Tenure** | **Continuity** | Account longevity as trust prior: decade-old subscriber ≠ week-old burner SIM — feeds the risk score |
-| 8 | Device Reachability Status | **Context** | Liveness: principal dark for days ≠ "present and consenting" for high-value scopes |
-| 9 | Device Roaming Status (+ events) | **Context** | Travel mode: "genuinely abroad" kills false declines; roaming-change-country events re-price risk |
-| 10 | Location Verification | **Context** | Optional geo-consistency for high-value transactions |
-| 11 | *(roadmap)* KYC Fill-in, Age Verification | — | Instant onboarding of unbanked principals; vulnerable-user (Wali) guardian mode |
+| 1 | Number Verification | **Binding** | Mandate creation: **network-confirmed possession** of the phone number via the 3-legged consent flow (*not* proof the human is present — pt 13) |
+| 2 | KYC Match | **Identity** | Claimed name/ID matches the operator's registered owner — the wakeel acts for a *named* muwakkil |
+| 3 | SIM Swap (check + events) | **Hijack** | Recent swap blocks issuance; a swap **event revokes** outstanding tokens |
+| 4 | Device Swap | **Hijack** | Same SIM, new hardware → step-up |
 
-Every API answers one question — *is the human behind this agent still who, where, and reachable as expected?* — which is precisely "CAMARA APIs as trusted real-time data sources for agent decisions," the mandatory requirement, verbatim. The risk scorer fuses five dimensions; the demo shows at least binding + hijack + continuity live.
+**Escalation toolkit (pulled by the verification plan on medium/high risk):**
 
-## 4. Agent architecture
+| NaC API | Trust dimension | Pulled when… |
+|---|---|---|
+| Call Forwarding Signal | **Hijack** | voice-verified scope or vishing risk — active forwarding = interception (nobody else checks this) |
+| Number Recycling | **Continuity** | mandate renewal / dormant principal — reassigned number = takeover class |
+| Tenure | **Continuity** | new or thin-history principal — week-old burner ≠ decade-old subscriber |
+| Device Reachability | **Context** | high-value scope needs liveness (dark for days ≠ present) |
+| Roaming Status (+events) | **Context** | cross-border transaction — "genuinely abroad" vs. swapped SIM |
+| Location Verification | **Context** | high-value geo-consistency check |
+
+*Roadmap:* KYC Fill-in (instant unbanked onboarding), Age Verification (vulnerable-user "Wali" guardian mode).
+
+The demo's high-risk path **must visibly pull Call Forwarding + a continuity signal** — that is where the moat is on screen.
+
+## 4. Agent architecture — Supervisor + specialist roles + independent Sentinel
+
+The review (pt 21) folds the flat Mandate/Risk/Sentinel triad under a **Supervisor Agent** for clarity. We keep the specialist roles **named and visible** (the Phase-2 rubric scores *multi-agent* orchestration — a single opaque brain would score worse), and we keep the **Sentinel as an independent asynchronous listener** (there is no in-flight transaction to "supervise" when an operator pushes a swap event).
 
 ```
-              WAKALAH PLATFORM  (approved-tools agent runtime)
-     ┌────────────────┬─────────────────────┬──────────────────┐
-     ▼                ▼                     ▼                  │
- MANDATE AGENT    SENTINEL AGENT        RISK SCORER            │
- runs issuance:   watches SIM-swap /    per-transaction        │
- principal        device-swap /         fusion: scope check +  │
- consent + NV     reachability events   fresh signals →        │
- flow → mints     → revokes tokens,     allow / step-up / deny │
- token            notifies principal                           │
-     └────────────────┴─────────────────────┴──────────────────┘
+        WAKALAH SUPERVISOR AGENT   (LangGraph; Gemini reason / Groq fast; Ollama fallback)
+        request-time decision flow:
+           ┌───────────────┬───────────────┬────────────────────┐
+           ▼               ▼               ▼                    ▼
+      RISK ANALYST     PLAN BUILDER   EVIDENCE INTERP.     EXPLAINER
+      classify         select checks   read signals →      human-readable
+      low/med/high     for the tier    ALLOW/STEP-UP/DENY  rationale trace
+           └───────────────┴───────────────┴────────────────────┘
+                              │  proposal (risk, plan, recommendation)
+                              ▼
+        DETERMINISTIC POLICY ENGINE   (fixed, versioned rules — FINAL authority)
+        · enforces a MINIMUM verification floor per risk tier
+        · returns ALLOW / STEP-UP / DENY  ·  same facts+rules ⇒ same result (auditable)
                               │
-                    NaC CLIENT ABSTRACTION (MCP / SDK)
-                              │
-                    Nokia Network as Code APIs
+                    NacClient (REST + record/replay)  →  Nokia Network as Code
 
- DEMO ECOSYSTEM (also ours, clearly labeled):
-   "Rasheed" — legit consumer agent (sends mother's monthly remittance)
-   "Rasheed-Clone" — attacker's copy running on stolen credentials
-   Mock remittance provider checkout calling the verify endpoint
+   INDEPENDENT — SENTINEL (async):  operator swap/device events  →  revoke mandates,
+   force secure re-verification  (machine-to-machine; attacker never in the loop)
+
+   DEMO ECOSYSTEM (ours, labeled):  Amina + agent "Rasheed" (legit) · "Rasheed-Clone"
+   (attacker, stolen creds) · mock remittance checkout calling /verify
 ```
 
-Note the meta-flex for judges: **an AI agent (Sentinel/Risk Scorer) using network APIs to police other AI agents** — agentic AI squared, in a hackathon whose named criterion is "Agentic AI & Multi-API Orchestration."
+**The decision flow (review pts 1–5, 16–18):**
+1. External agent sends the requested **action + mandate** to Wakalah.
+2. **Risk Analyst** classifies **low / medium / high** from amount, beneficiary novelty, transaction type, mandate scope, prior behavior, context.
+3. **Plan Builder** proposes a **verification plan** matching the tier (core spine for low; spine + targeted escalation signals for medium/high).
+4. NacClient calls the selected CAMARA APIs.
+5. **Evidence Interpreter** reads the signals and proposes **ALLOW / STEP-UP / DENY** with a rationale.
+6. **Policy engine** checks the proposal against fixed rules **and enforces the per-tier minimum-check floor** — the agent may *escalate above* the floor, never *plan below* it. This closes the "what if the AI under-checks a fraudulent request?" hole: *AI proposes the plan and the verdict; policy guarantees the floor and owns the final decision.*
+7. Policy issues the final decision; Wakalah records evidence, reasoning, API results, and the verdict.
 
-## 5. Honesty ledger
+**STEP-UP is first-class (pt 18):** mixed signals (e.g. a new device with *no* recent SIM swap) resolve to STEP-UP re-verification, not a binary allow/deny — real fraud systems don't treat every anomaly as certain fraud.
+
+**Why this is defensibly agentic:** the agent *reasons about the action* (classify → plan → interpret → explain) instead of executing a fixed sequence; a small routine payment genuinely gets fewer checks than a large transfer to a new beneficiary. Meta-flex intact: **an AI agent using network APIs to police *other* AI agents.**
+
+## 5. Honesty ledger (review pts 8, 14, 15, 19)
+
+The UI **distinguishes on screen**: live result · cached result (replay) · unavailable signal · simulated event. Fallbacks are never presented as real network responses.
 
 | Element | Status |
 |---|---|
-| Number Verification, SIM Swap, Device Swap, Reachability, Location, Roaming calls | **Real calls** against simulated devices/numbers |
-| SIM-swap "attack" trigger | Simulator-triggered if supported; else scripted state change, **labeled** |
+| NV, KYC Match, SIM/Device Swap, Reachability, Roaming, Location, Call-Forwarding, Recycling, Tenure calls | **Real calls** against NaC simulators |
+| SIM-swap **revocation event** | Real operator event **only if the sandbox delivers subscriptions**; otherwise a **clearly-labeled simulated event** + fast-poll of SIM-swap retrieve-date (the timestamp change) drives the same revocation. Verify sandbox subscription delivery in the build |
 | Remittance provider, transactions, both consumer agents | Mock ecosystem we build, labeled — the *product* is the trust layer, and its API calls are real |
+
+**Claims discipline:** NV = "network-confirmed phone-number possession + operator-record identity matching," **never** "cryptographic proof the human is present" (pt 13). We say "Wakalah blocks the *demonstrated* SIM-swap-led takeover," **never** "100% fraud prevention" (pt 14). Latency/revocation numbers are **design targets until measured**; report actual prototype results after testing (pt 15).
 
 ## 6. Demo scenario (3-minute storyboard, split-screen)
 
-| Time | Beat | On screen | Live NaC calls |
+Emphasis (pt 22): agent **reasoning steps**, live **signal cards**, the **different verification plans** per risk, and the **final deterministic decision** — not decorative side-by-side cards.
+
+| Time | Beat | On screen | NaC calls |
 |---|---|---|---|
 | 0:00–0:20 | Hook | "Your AI agent wants to send money home. Who vouches for it?" | — |
-| 0:20–0:50 | Mandate | Amina in Doha authorizes agent *Rasheed*: monthly 2,000 QAR to her mother. Token minted; payload shown | Number Verification, SIM Swap baseline |
-| 0:50–1:25 | Legit flow | Rasheed hits the remittance checkout; provider calls `POST /verify`; all green → transfer approved | SIM Swap, Device Swap, Reachability |
-| 1:25–2:20 | The attack | Split screen: fraudster SIM-swaps Amina, launches *Rasheed-Clone* with stolen credentials. Swap event fires → **Sentinel revokes the token mid-checkout** → clone's transaction dies; Amina's phone gets the re-verify challenge | SIM-swap event/poll, revocation, step-up NV |
-| 2:20–2:45 | Travel twist (optional if tight: cut) | Amina lands in Istanbul; roaming+location consistency keeps her *own* purchases alive while the stolen-credential path stays dead | Roaming Status, Location Verification |
-| 2:45–3:00 | Close | Trust-decision dashboard; "operators become the trust anchor of the agent economy — and bill for every verification" | — |
+| 0:20–0:55 | Mandate | Amina authorizes agent *Rasheed*: ≤2,000 QAR/mo to her mother. Risk **LOW** → core-spine plan → token minted (payload + key-binding shown) | NV, KYC Match, SIM Swap, Device Swap |
+| 0:55–1:25 | Legit flow (ALLOW) | Rasheed hits checkout; `/verify`; low risk, spine green, signature valid → **ALLOW** | SIM Swap, Device Swap |
+| 1:25–2:20 | The attack (DENY + revoke) | Fraudster SIM-swaps Amina, launches *Rasheed-Clone*. Unusual context → risk **HIGH** → plan **expands** (Call Forwarding + Tenure/Recycling pulled *on screen*) → dangerous signals → **policy DENY**; swap event → **Sentinel revokes the mandate mid-checkout**; Amina gets secure re-verification | Swap event/poll, Call Forwarding, Tenure/Recycling, revocation |
+| 2:20–2:40 | Mixed signal (STEP-UP) | Amina's own new phone, no recent swap → risk **MEDIUM** → **STEP-UP**, not deny | Device Swap, NV step-up |
+| 2:40–3:00 | Close | Decision dashboard + audit trail; "operators become the trust anchor of the agent economy — and bill for every verification" | — |
 
 ## 7. Business model & the operator-revenue slide
 
 - **Pricing:** per-verification fee (the exact model banks already pay for SIM-swap checks today — proven willingness to pay) + platform fee for mandate hosting; volume tiers for PSPs/remittance operators.
-- **Unit economics (directional anchors from the adjacent phone-intelligence market — Twilio Lookup/Verify class ≈ $0.05/lookup; CAMARA operator pricing is negotiated, not public — verify before deck-final):** signal COGS ≈ $0.01–0.10/call (KYC Match 2–5×); mandate issuance ≈ 6 signals ≈ $0.10–0.50 once per mandate; per-transaction verify ≈ 2–4 hot signals ≈ $0.03–0.25 raw, reduced to ~$0.02–0.08 typical by **per-risk-tier signal-TTL caching** (slow-moving signals like tenure/recycling cached days; swap minutes; forwarding/reachability real-time only for high-value scopes — this TTL policy lives in the policy engine); Sentinel = event subscriptions ≈ flat/month per principal, not per-poll (event-driven is also the cheap design). Charge placeholders: **$0.15/verify, $1.00/mandate**, volume tiers → 50–70% gross margin. LLM cost ≈ $0 on free tiers, pennies/1k decisions in production.
-- **Operator revenue with a number attached (the GSMA slide):** per 1,000 agent-initiated transactions ≈ 2,000–4,000 billable operator API calls ≈ **$40–$200 new operator revenue per 1,000 transactions** — on flows operators currently monetize at zero.
-- **Operator story:** every agent transaction anywhere = 2–5 billable API calls. Operators stop being dumb pipes under the agent economy and become its **identity layer** — this is GSMA's own 2026 thesis, handed back to them as a working prototype.
-- **GTM:** remittance operators and PSPs in the GCC first (highest fraud pain, densest corridors); banks' travel-decline problem second; alignment with AP2-style mandate protocols as they standardize.
-- **Pivot option on file:** humanitarian aid-distribution verification (same core, NGO buyers) — see doc 01, round-2 notes.
+- **Unit economics (directional anchors — Twilio Lookup/Verify class ≈ $0.05/lookup; CAMARA operator pricing is negotiated, not public — verify before deck-final):** signal COGS ≈ $0.01–0.10/call; mandate issuance ≈ 4 spine signals once per mandate; per-transaction verify ≈ 2–4 signals raw, reduced by **per-risk-tier signal-TTL caching** (tenure/recycling cached days; swap minutes; forwarding/reachability real-time only for high-value scopes — this TTL policy lives in the policy engine, and it is the *same* risk-tiering that drives the verification plan). Charge placeholders: **$0.15/verify, $1.00/mandate**, volume tiers → 50–70% gross margin. LLM ≈ $0 on free tiers.
+- **Operator revenue (the GSMA slide):** per 1,000 agent-initiated transactions ≈ 2,000–4,000 billable operator API calls ≈ **$40–$200 new operator revenue per 1,000 transactions** — on flows monetized at zero today. *(Estimate; label as such.)*
+- **GTM:** GCC remittance operators and PSPs first; banks' travel-decline problem second; align with AP2-style mandate protocols as they standardize.
+- **Pivot option on file:** humanitarian aid-distribution verification (same core, NGO buyers) — see doc 01.
 
 ## 8. Honest risks & prepared counters
 
-- **"Local relevance?"** → Wakalah framing + remittance corridors + MWC *Doha* stage. Regional by blood, global by design.
-- **"Agentic payments are early."** → The rails are being built *now* (AP2/ACP etc.); fraud infrastructure must precede volume, not chase it. And the judges' own organizations are the ones pushing agentic network APIs.
-- **"Isn't this just a SIM-swap check?"** → Those are point-in-time person checks. Wakalah is a *standing mandate* with delegation chain, scope, TTL, and event-driven revocation — the difference between a passport photo and a live guardianship.
-- **"Seen TrustScore win Africa."** → Precedent that this archetype wins; our twist (agents as the subject, continuous revocation) is the 2026 sequel, not a rerun.
-- **Abstraction in 3 minutes.** → Split-screen human story: a mother's remittance, a thief mid-checkout, a token dying in real time.
+- **"Is Number Verification proof the human is there?"** → No — it's network-confirmed *possession* of the number plus operator identity matching. Strong evidence, not mathematical proof of presence or intent. (This honesty is a credibility *asset* with telecom judges.)
+- **"What if the AI misclassifies risk and under-checks?"** → It can't check below the policy engine's **per-tier minimum floor**; the agent may only escalate above it. Policy owns the floor and the final verdict.
+- **"Isn't this just a SIM-swap check?"** → Those are point-in-time person checks. Wakalah is a *standing, sender-constrained mandate* with delegation chain, scope, proof-of-possession, and event-driven revocation.
+- **"One Supervisor — is it really multi-agent?"** → The supervisor coordinates named specialist roles (Risk Analyst, Plan Builder, Evidence Interpreter, Explainer) plus an independent async Sentinel — LangGraph's supervisor-with-workers *is* a multi-agent pattern.
+- **"Agentic payments are early."** → Rails are being built *now*; fraud infrastructure must precede volume. The judges' own organizations are pushing agentic network APIs.
+- **"Seen TrustScore win Africa."** → Precedent this archetype wins; our twist (agents as the subject, dynamic planning, continuous revocation) is the 2026 sequel.
+- **Abstraction in 3 minutes.** → Split-screen human story: a mother's remittance, a thief mid-checkout, a token dying in real time, and a step-up that isn't a false alarm.

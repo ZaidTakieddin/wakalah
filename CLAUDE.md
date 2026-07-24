@@ -8,7 +8,7 @@ New here (human or AI)? Read [docs/09-master-explanation.md](docs/09-master-expl
 1. **No secrets in git.** Keys live in `.env` files (git-ignored). If a key ever lands in history, rotate it — deleting the line is not enough.
 2. **$0 rule.** Every tool/service pinned to a free tier; nothing may require a credit card (docs/09 §6).
 3. **Tooling-guide compliance.** The product's runtime agent brains are Gemini / Groq / Ollama only, on LangGraph + Pydantic AI. Claude/ChatGPT are approved as *coding assistants*, never as runtime brains (docs/02 §3).
-4. **Agents propose, policy disposes.** LLM output never mutates state directly; the deterministic policy layer has final authority on every verdict.
+4. **Agents propose, policy disposes.** LLM output never mutates state directly; the deterministic policy layer has final authority on every verdict *and* enforces a minimum verification-check floor per risk tier (the agent may escalate above it, never plan below it). See docs/04 §4.
 5. **NacClient is the only door to NaC.** No HTTP calls to Network-as-Code outside `backend/app/nac/`.
 6. **Deterministic demo.** The scenario engine drives the story; the replay cache is the fallback; no wall-clock-dependent behavior in demo paths.
 7. **Honesty ledger.** Every synthetic/simulated input is declared in `SYNTHETIC_DATA.md` and labeled in the UI.

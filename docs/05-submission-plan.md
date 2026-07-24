@@ -4,7 +4,7 @@
 
 ## Artifact 1 — Idea Capture Template (MS Word / PDF)
 
-> ✅ **Superseded (Jul 12):** the actual submission document now lives at `submission/Wakalah-Idea-Capture.docx` (validated, diagram embedded), structured per the organizers' Inspiration Guide. The drafts below remain as source material for the deck.
+> ✅ **Superseded (Jul 12–14):** the actual submission document lives at `submission/Wakalah-Idea-Capture.docx` (validated, diagram embedded, all placeholders filled, dated 14 Jul 2026), structured per the organizers' Inspiration Guide. **Jul 14 honesty pass (doc 09 D23):** removed "100% fraud prevention" → "blocks the demonstrated SIM-swap-led takeover"; removed "cryptographic proof the SIM is present" → "network-confirmed possession of the phone number"; performance figures already labeled targets. The deck (not yet built) carries the deeper v2 design — Supervisor + risk-tiered planning + sender-constrained tokens + STEP-UP (doc 04 v2). The drafts below remain deck source material.
 
 > ⚠️ Download the **actual template** from HackerEarth first (doc 02 §1) — field names and dropdowns ("project type", "GSMA pillar") must match theirs, not ours. Below is draft copy per required field from the brief.
 
