@@ -83,6 +83,47 @@ Transport: one WebSocket (`/ws`) broadcasting JSON events `{type, ts, payload}`;
 | `POST /scenario/inject` | fire a named event (e.g. `red_zone_entry`, `sim_swap_attack`) — the presenter's remote |
 | `POST /plan/apply` (MIZAN) / `POST /verify` (Wakalah) | the two "button" moments in the demos |
 
+## 3.5 Partner-facing API contract (adopted Jul 14, D25 — the shape the backend implements)
+
+Two audiences, do not confuse them: §3 above is the **demo UI contract** (WebSocket + scenario control). This section is the **product contract** — what a bank, PSP, or merchant integrates against. Principle from the external review: *expose business intents, not raw telco quirks.* The partner asks "should this transaction proceed?"; Wakalah decides internally which CAMARA signals to pull.
+
+| Route | Purpose |
+|---|---|
+| `POST /v1/link-sessions` | Start mandate creation: kicks off the operator consent flow (NV) + returns a redirect/capture instruction |
+| `POST /v1/transactions/evaluate` | **The main endpoint.** Partner submits a transaction; Wakalah returns `allow` / `challenge` (STEP-UP) / `deny` with reason codes and an evidence summary |
+| `POST /v1/transactions/{id}/confirm` | Completes a challenged transaction after step-up proof |
+| `GET  /v1/transactions/{id}` | Decision + audit reference lookup |
+| `POST /v1/consents/check` | Consent/purpose status for a principal (production-facing; stubbed in the demo) |
+
+**Evaluate response shape** (the demo dashboard renders exactly this):
+
+```json
+{ "transactionId": "tx_…", "decision": "challenge",
+  "reasonCodes": ["DEVICE_SWAP_RECENT", "AMOUNT_ABOVE_PARTNER_THRESHOLD"],
+  "riskTier": "high",
+  "evidenceSummary": { "numberVerification": "not_yet_performed",
+                       "simSwap": {"status": "not_recent"},
+                       "deviceSwap": {"status": "recent", "maxAgeHours": 24} },
+  "challenge": { "challengeId": "chl_…", "method": "step_up_number_verification" } }
+```
+
+`reasonCodes` are stable machine-readable strings (not prose) so partners can build rules on them — and they double as the human-readable "why" in the demo UI.
+
+**Normalized internal evidence schema — `app/nac/` emits only this shape, never raw provider JSON.** This is what keeps the policy engine independent of operator/provider differences, and it carries the compliance context every regulator asks about:
+
+```json
+{ "signal": "sim_swap", "provider": "nokia_nac", "network": "operator_x",
+  "subject": {"phoneNumber": "+99999991000"},
+  "result": {"recent": false, "latestTimestamp": "2026-07-14T12:03:21Z"},
+  "purpose": "FraudPreventionAndDetection",
+  "legalBasis": "legitimate_interest",
+  "consentStatus": "not_required_at_runtime",
+  "evidenceTime": "2026-07-14T15:32:11Z",
+  "source": "live" }
+```
+
+`source` ∈ `live | cached | replay | simulated` — this single field powers the honesty labelling in the UI (doc 04 §5). `purpose` / `legalBasis` / `consentStatus` exist because real operators differ per market (Orange FR runs SIM-swap fraud checks on *legitimate interest*; other markets require explicit runtime consent) — carrying them from day one is what makes the design production-credible.
+
 ## 4. Definition of done — demo backend
 
 - [ ] Scenario runs start→finish unattended in <3 min, emitting all storyboard beats (concept doc §7/§6)

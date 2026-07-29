@@ -41,7 +41,20 @@ WAKALAH TOKEN  (signed JWT, sender-constrained)
 
 Merchants/PSPs call one **verify endpoint** before honoring an agent-initiated transaction.
 
-**Scoping note (pt 11, for a 2-person build):** design the keypair binding into the token model and the deck now (cheap, high-credibility); implement the signature-verify path in the prototype if time allows, else present it as designed with the JWT binding shown. It must not eat the core demo.
+**Standards alignment (D25).** What we call a "sender-constrained token with proof-of-possession" has an industry name: **DPoP** (Demonstrating Proof-of-Possession), part of the **FAPI 2.0** security profile that banks build to. Say it that way to technical judges — it signals we know the production bar:
+
+| Our design element | Standard it maps to |
+|---|---|
+| Sender-constrained trust token | **DPoP** (public/mobile clients) or **mTLS** (confidential server partners), per **FAPI 2.0** |
+| Partner OAuth integration | OAuth 2.0 + **PKCE**, hardened with **PAR** (pushed authorization requests) + **JAR** (signed request objects) |
+| Operator consent flow (NV) | 3-legged OAuth authorization-code flow with PKCE, initiated **from the user's device** — **RFC 8252** (external user-agent, never an embedded WebView) |
+| STEP-UP human approval | **WebAuthn / passkeys** — phishing-resistant, per **NIST SP 800-63B** AAL2/AAL3 *(production path)* |
+| Device binding | Hardware-backed keys + **Play Integrity** / **App Attest**, verified server-side *(production path)* |
+| Mobile app hardening | **OWASP MASVS** *(production path)* |
+
+**Scoping note (for a 2-person build):** design the keypair binding into the token model and the deck now (cheap, high-credibility); implement the signature-verify path in the prototype if time allows. The rows marked *production path* are **named, not built** — they require a native mobile app and months of work. Naming them correctly is what earns the credibility; pretending to have built them would lose it.
+
+**Honest gap (state it before a judge finds it):** operator signals prove *possession and account integrity*, not that **the human approved this specific transaction**. Human intent enters our design at two points: the operator consent flow at mandate creation, and STEP-UP re-verification. Device-bound **passkey transaction signing** is the documented production upgrade that closes it fully.
 
 ## 3. API orchestration — a core spine + a risk-triggered escalation toolkit
 
@@ -51,7 +64,7 @@ The catalog (doc 08) surfaced six identity APIs the brief never listed. The revi
 
 | # | NaC API | Trust dimension | Role |
 |---|---|---|---|
-| 1 | Number Verification | **Binding** | Mandate creation: **network-confirmed possession** of the phone number via the 3-legged consent flow (*not* proof the human is present — pt 13) |
+| 1 | Number Verification | **Binding** | Mandate creation: **network-confirmed possession** of the phone number via the 3-legged consent flow (*not* proof the human is present — pt 13). **Production caveat (D25):** operator docs (e.g. Orange) show this flow must be **initiated from the user's device over mobile data** — backend-only NV is unreliable by design. Our sandbox probe succeeded headless because **the sandbox auto-approves**; we say so rather than implying production works that way |
 | 2 | KYC Match | **Identity** | Claimed name/ID matches the operator's registered owner — the wakeel acts for a *named* muwakkil |
 | 3 | SIM Swap (check + events) | **Hijack** | Recent swap blocks issuance; a swap **event revokes** outstanding tokens |
 | 4 | Device Swap | **Hijack** | Same SIM, new hardware → step-up |
@@ -92,8 +105,9 @@ The review (pt 21) folds the flat Mandate/Risk/Sentinel triad under a **Supervis
                               │
                     NacClient (REST + record/replay)  →  Nokia Network as Code
 
-   INDEPENDENT — SENTINEL (async):  operator swap/device events  →  revoke mandates,
-   force secure re-verification  (machine-to-machine; attacker never in the loop)
+   INDEPENDENT — SENTINEL (async):  operator swap/device events  →  revoke mandates AND
+   put the principal in CHALLENGE-ONLY MODE until secure re-verification
+   (machine-to-machine; attacker never in the loop)
 
    DEMO ECOSYSTEM (ours, labeled):  Amina + agent "Rasheed" (legit) · "Rasheed-Clone"
    (attacker, stolen creds) · mock remittance checkout calling /verify
@@ -110,11 +124,15 @@ The review (pt 21) folds the flat Mandate/Risk/Sentinel triad under a **Supervis
 
 **STEP-UP is first-class (pt 18):** mixed signals (e.g. a new device with *no* recent SIM swap) resolve to STEP-UP re-verification, not a binary allow/deny — real fraud systems don't treat every anomaly as certain fraud.
 
+**Challenge-only mode (D25):** a hijack event doesn't merely kill outstanding tokens — it puts the principal's account into a **restricted state where every subsequent action requires step-up** until secure re-verification clears it. This closes the window between "we detected the compromise" and "the next transaction arrives," which is exactly the proportionate, risk-based response fraud-prevention frameworks expect.
+
+**Production roadmap outcome:** a fourth verdict, `review` (manual/human queue for very high amounts), is standard in real payment risk engines. We keep **three** in the demo for clarity and name `review` as the production extension.
+
 **Why this is defensibly agentic:** the agent *reasons about the action* (classify → plan → interpret → explain) instead of executing a fixed sequence; a small routine payment genuinely gets fewer checks than a large transfer to a new beneficiary. Meta-flex intact: **an AI agent using network APIs to police *other* AI agents.**
 
 ## 5. Honesty ledger (review pts 8, 14, 15, 19)
 
-The UI **distinguishes on screen**: live result · cached result (replay) · unavailable signal · simulated event. Fallbacks are never presented as real network responses.
+The UI **distinguishes on screen**: live result · cached result (replay) · unavailable signal · simulated event. Fallbacks are never presented as real network responses. **Mechanism (D25):** every normalized evidence record carries `source ∈ live | cached | replay | simulated` (doc 07 §3.5), so the labelling is generated from the data itself — it cannot drift out of sync with what actually happened.
 
 | Element | Status |
 |---|---|
@@ -151,6 +169,9 @@ Emphasis (pt 22): agent **reasoning steps**, live **signal cards**, the **differ
 - **"What if the AI misclassifies risk and under-checks?"** → It can't check below the policy engine's **per-tier minimum floor**; the agent may only escalate above it. Policy owns the floor and the final verdict.
 - **"Isn't this just a SIM-swap check?"** → Those are point-in-time person checks. Wakalah is a *standing, sender-constrained mandate* with delegation chain, scope, proof-of-possession, and event-driven revocation.
 - **"One Supervisor — is it really multi-agent?"** → The supervisor coordinates named specialist roles (Risk Analyst, Plan Builder, Evidence Interpreter, Explainer) plus an independent async Sentinel — LangGraph's supervisor-with-workers *is* a multi-agent pattern.
+- **"Does this prove the *human* approved the transaction?"** → No — operator signals prove possession and account integrity. Human intent enters at mandate consent and at STEP-UP; device-bound **passkey transaction signing (WebAuthn)** is the documented production upgrade. *(Answering this honestly beats being caught by it.)*
+- **"How do you handle consent and different operators' legal bases?"** → Every signal is normalized into one internal evidence record carrying `purpose`, `legalBasis`, and `consentStatus` (doc 07 §3.5), so provider and market differences never leak into the policy engine — e.g. some markets run fraud checks under legitimate interest, others require explicit runtime consent.
+- **"What's your production security path?"** → **FAPI 2.0** profile: OAuth 2.0 + PKCE + **PAR/JAR**, sender-constrained tokens via **DPoP** (mobile) or **mTLS** (server partners); **WebAuthn/passkeys** for human approval; hardware key **attestation** for device binding; **OWASP MASVS** for any mobile client. Named deliberately as the hardening path — the prototype demonstrates the trust logic, not a bank's full security stack.
 - **"Agentic payments are early."** → Rails are being built *now*; fraud infrastructure must precede volume. The judges' own organizations are pushing agentic network APIs.
 - **"Seen TrustScore win Africa."** → Precedent this archetype wins; our twist (agents as the subject, dynamic planning, continuous revocation) is the 2026 sequel.
 - **Abstraction in 3 minutes.** → Split-screen human story: a mother's remittance, a thief mid-checkout, a token dying in real time, and a step-up that isn't a false alarm.
