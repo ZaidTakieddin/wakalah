@@ -27,3 +27,6 @@ Thumbs.db
 
 # local-only claude settings (shared settings stay in git)
 .claude/settings.local.json
+
+# personal prep notes - intentionally never committed
+judge-prep-course.md
