@@ -10,7 +10,7 @@ docs/04 (concept spec) so the code cannot drift from the documented design:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -19,18 +19,18 @@ from pydantic import BaseModel, ConfigDict, Field
 
 def utc_now() -> datetime:
     """Timezone-aware current time. Never use naive datetimes in evidence."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------- dimensions
 class TrustDimension(StrEnum):
     """The five questions any honest trust system must answer (docs/04 section 3)."""
 
-    BINDING = "binding"        # is this number's SIM actually here?
-    IDENTITY = "identity"      # who is the registered owner?
-    HIJACK = "hijack"          # has the account been taken over recently?
+    BINDING = "binding"  # is this number's SIM actually here?
+    IDENTITY = "identity"  # who is the registered owner?
+    HIJACK = "hijack"  # has the account been taken over recently?
     CONTINUITY = "continuity"  # is this still the same human over time?
-    CONTEXT = "context"        # is the situation consistent right now?
+    CONTEXT = "context"  # is the situation consistent right now?
 
 
 class Signal(StrEnum):
@@ -100,9 +100,9 @@ class EvidenceSource(StrEnum):
     data itself, so it can never drift from what really happened.
     """
 
-    LIVE = "live"            # a real call to the network, right now
-    CACHED = "cached"        # a real response, reused within its TTL
-    REPLAY = "replay"        # a real response recorded in an earlier run
+    LIVE = "live"  # a real call to the network, right now
+    CACHED = "cached"  # a real response, reused within its TTL
+    REPLAY = "replay"  # a real response recorded in an earlier run
     SIMULATED = "simulated"  # fabricated by us; always labelled as such
     UNAVAILABLE = "unavailable"  # the signal could not be obtained
 
@@ -202,8 +202,8 @@ class Mandate(BaseModel):
     """A principal's authorization of one agent, with limits and an expiry."""
 
     mandate_id: str
-    principal_id: str          # hashed MSISDN — raw numbers are not stored
-    principal_msisdn: str      # sandbox only; production stores the hash alone
+    principal_id: str  # hashed MSISDN — raw numbers are not stored
+    principal_msisdn: str  # sandbox only; production stores the hash alone
     agent_id: str
     agent_key_fingerprint: str
     """The token is bound to this keypair: a stolen token is useless without

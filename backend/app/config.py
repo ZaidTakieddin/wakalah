@@ -41,9 +41,7 @@ class Settings(BaseSettings):
     # --- Agent brains (Tooling-Guide approved, free tiers) -------------------
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
-    ollama_base_url: str = Field(
-        default="http://localhost:11434", alias="OLLAMA_BASE_URL"
-    )
+    ollama_base_url: str = Field(default="http://localhost:11434", alias="OLLAMA_BASE_URL")
 
     # --- Demo / operational behaviour ---------------------------------------
     nac_mode: str = Field(default="live", alias="NAC_MODE")

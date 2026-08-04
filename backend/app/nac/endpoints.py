@@ -209,10 +209,7 @@ SPECS: dict[Signal, SignalSpec] = {
     ),
     Signal.NUMBER_VERIFICATION: SignalSpec(
         signal=Signal.NUMBER_VERIFICATION,
-        path=(
-            "/passthrough/camara/v1/number-verification/"
-            "number-verification/v0/verify"
-        ),
+        path=("/passthrough/camara/v1/number-verification/number-verification/v0/verify"),
         build_body=_phone_body,
         normalize=_norm_number_verification,
         needs_bearer=True,

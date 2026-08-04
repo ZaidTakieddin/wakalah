@@ -17,6 +17,7 @@ distinction is a security property, not a style choice.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import re
 import time
@@ -130,16 +131,10 @@ class NacClient:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
                 async with self._semaphore:
-                    response = await self._http_client().post(
-                        url, headers=headers, json=body
-                    )
+                    response = await self._http_client().post(url, headers=headers, json=body)
             except httpx.HTTPError as exc:
-                self._emit(
-                    signal, msisdn, spec.path, body, None, exc.__class__.__name__, 0
-                )
-                return self._unavailable(
-                    signal, msisdn, code="NETWORK_ERROR", message=str(exc)
-                )
+                self._emit(signal, msisdn, spec.path, body, None, exc.__class__.__name__, 0)
+                return self._unavailable(signal, msisdn, code="NETWORK_ERROR", message=str(exc))
 
             # Transient upstream conditions (rate limiting, gateway hiccups) get a
             # backoff and another try; anything else is a real answer.
@@ -193,10 +188,7 @@ class NacClient:
         """
         signal_list = list(signals)
         results = await asyncio.gather(
-            *(
-                self.fetch(s, msisdn, access_token=access_token, **params)
-                for s in signal_list
-            ),
+            *(self.fetch(s, msisdn, access_token=access_token, **params) for s in signal_list),
             return_exceptions=True,
         )
 
@@ -204,9 +196,7 @@ class NacClient:
         for signal, result in zip(signal_list, results, strict=True):
             if isinstance(result, BaseException):
                 bundle.add(
-                    self._unavailable(
-                        signal, msisdn, code="CLIENT_ERROR", message=str(result)
-                    )
+                    self._unavailable(signal, msisdn, code="CLIENT_ERROR", message=str(result))
                 )
             else:
                 bundle.add(result)
@@ -255,16 +245,13 @@ class NacClient:
         return self.replay_dir / f"{_safe_key(signal, msisdn)}.json"
 
     def _write_replay(self, signal: Signal, msisdn: str, raw: Any) -> None:
-        try:
+        # Recording is best-effort; never fail a verification over it.
+        with contextlib.suppress(OSError):
             self._replay_path(signal, msisdn).write_text(
                 json.dumps(raw, indent=2), encoding="utf-8"
             )
-        except OSError:
-            pass  # recording is best-effort; never fail a verification over it
 
-    def _from_replay(
-        self, signal: Signal, msisdn: str, body: dict[str, Any]
-    ) -> EvidenceRecord:
+    def _from_replay(self, signal: Signal, msisdn: str, body: dict[str, Any]) -> EvidenceRecord:
         path = self._replay_path(signal, msisdn)
         if not path.exists():
             return self._unavailable(
@@ -298,7 +285,8 @@ class NacClient:
     ) -> None:
         if self.on_call is None:
             return
-        try:
+        # The UI panel must never be able to break a decision.
+        with contextlib.suppress(Exception):
             self.on_call(
                 {
                     "type": "nac.call",
@@ -312,5 +300,3 @@ class NacClient:
                     "simulated_device": msisdn.startswith("+9999999"),
                 }
             )
-        except Exception:  # noqa: BLE001 - the UI panel must never break a decision
-            pass
