@@ -144,6 +144,7 @@ class PolicyEngine:
         outcomes += self._coverage_rules(tier, evidence)
 
         verdict = self._most_severe(outcomes)
+        verdict, outcomes = self._apply_agent_escalation(verdict, outcomes, agent_proposal)
         return Decision(
             transaction_id=tx.transaction_id,
             verdict=verdict,
@@ -288,6 +289,33 @@ class PolicyEngine:
         ]
 
     # ----------------------------------------------------------------- helpers
+    @staticmethod
+    def _apply_agent_escalation(
+        verdict: Verdict,
+        outcomes: list[PolicyOutcome],
+        agent_proposal: Verdict | None,
+    ) -> tuple[Verdict, list[PolicyOutcome]]:
+        """The agent may add friction; only rules may refuse.
+
+        An LLM can notice a pattern the rule set has not encoded yet, so when it
+        is more worried than the rules are, its caution is honoured — but only as
+        far as STEP_UP. A hard DENY costs a real customer a real transaction, so
+        that stays with the deterministic rules alone. This is the verdict-level
+        twin of the tier rule: escalate yes, weaken never.
+        """
+        if agent_proposal is None or verdict is not Verdict.ALLOW:
+            return verdict, outcomes
+        if agent_proposal is Verdict.ALLOW:
+            return verdict, outcomes
+        return Verdict.STEP_UP, [
+            *outcomes,
+            PolicyOutcome(
+                Verdict.STEP_UP,
+                "AGENT_REQUESTED_STEP_UP",
+                "no rule fired, but the agent asked for additional verification",
+            ),
+        ]
+
     @staticmethod
     def _most_severe(outcomes: list[PolicyOutcome]) -> Verdict:
         if any(o.verdict is Verdict.DENY for o in outcomes):

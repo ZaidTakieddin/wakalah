@@ -36,7 +36,7 @@ from app.models.domain import (
     EvidenceSource,
     Signal,
 )
-from app.nac.endpoints import SPECS
+from app.nac.endpoints import KYC_FILL_IN_PATH, SPECS
 
 CallHook = Callable[[dict[str, Any]], None]
 """Called once per network call so the UI can render the live API panel.
@@ -171,6 +171,40 @@ class NacClient:
                 else ConsentStatus.NOT_REQUIRED_AT_RUNTIME
             ),
         )
+
+    async def fetch_identity(self, msisdn: str) -> dict[str, Any] | None:
+        """Operator-held registration data for a number (CAMARA KYC Fill-in).
+
+        Used at mandate creation to autofill a principal's identity from the
+        operator instead of asking them to type it — the "instant onboarding"
+        case for people without deep document history. Returns None when the
+        operator or market does not support it; onboarding then falls back to
+        the identity the partner asserts.
+        """
+        if self.mode == "replay":
+            return None
+        try:
+            response = await self._http_client().post(
+                settings.nac_base_url + KYC_FILL_IN_PATH,
+                headers=settings.nac_headers,
+                json={"phoneNumber": msisdn},
+            )
+        except httpx.HTTPError:
+            return None
+
+        raw = self._parse(response)
+        self._emit(
+            Signal.KYC_MATCH,
+            msisdn,
+            KYC_FILL_IN_PATH,
+            {"phoneNumber": msisdn},
+            response.status_code,
+            {"identity_autofilled": response.status_code < 400},
+            0,
+        )
+        if response.status_code >= 400 or not isinstance(raw, dict):
+            return None
+        return raw
 
     async def fetch_many(
         self,

@@ -269,6 +269,28 @@ class TestDeterminism:
     def test_decision_records_the_policy_version(self, engine):
         assert engine.decide(make_tx(), make_mandate(), clean_floor()).policy_version == ("v1")
 
+    def test_agent_may_add_friction_when_no_rule_fired(self, engine):
+        """An LLM can spot a pattern the rules have not encoded yet, so its
+        caution is honoured — as a challenge, never as a refusal."""
+        decision = engine.decide(
+            make_tx(), make_mandate(), clean_floor(), agent_proposal=Verdict.STEP_UP
+        )
+        assert decision.verdict is Verdict.STEP_UP
+        assert "AGENT_REQUESTED_STEP_UP" in decision.reason_codes
+
+    def test_agent_cannot_deny_on_its_own(self, engine):
+        """A hard decline costs a real customer a real transaction, so only the
+        deterministic rules may refuse."""
+        decision = engine.decide(
+            make_tx(), make_mandate(), clean_floor(), agent_proposal=Verdict.DENY
+        )
+        assert decision.verdict is Verdict.STEP_UP
+
+    def test_agent_cannot_soften_a_rule_verdict(self, engine):
+        bundle = clean_floor(number_recycling={"recycled": True})
+        decision = engine.decide(make_tx(), make_mandate(), bundle, agent_proposal=Verdict.ALLOW)
+        assert decision.verdict is Verdict.DENY
+
     def test_agent_proposal_is_preserved_beside_the_verdict(self, engine):
         """'AI proposes, policy disposes' has to be visible, not just claimed."""
         bundle = clean_floor(sim_swap={"swapped": True})

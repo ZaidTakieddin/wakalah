@@ -48,6 +48,14 @@ from app.policy.engine import PolicyEngine
 
 TraceHook = Callable[[TraceStep], None]
 
+ISSUANCE_ONLY_SIGNALS = frozenset({Signal.NUMBER_VERIFICATION, Signal.KYC_MATCH})
+"""Proved once when the mandate is created, never re-run per transaction.
+
+Number Verification needs the operator's 3-legged consent flow, and KYC Match
+compares a claimed identity that does not change between transactions. Keeping
+them out of the hot path is both correct and cheaper.
+"""
+
 RISK_INSTRUCTIONS = """You are the Risk Analyst of Wakalah, a trust layer that
 decides whether an AI agent may act on a human principal's behalf.
 
@@ -62,8 +70,6 @@ to high — over-checking costs real customers real money in false declines."""
 PLAN_INSTRUCTIONS = """You are the Plan Builder of Wakalah. Given a risk tier,
 choose which telecom signals to verify. Available signals and what they answer:
 
-  BINDING     number_verification  - is the SIM present for this number
-  IDENTITY    kyc_match            - does the claimed identity match operator records
   HIJACK      sim_swap             - was the number moved to a new SIM recently
               device_swap          - same SIM, new handset
               call_forwarding      - calls being silently intercepted (vishing)
@@ -72,6 +78,10 @@ choose which telecom signals to verify. Available signals and what they answer:
   CONTEXT     reachability         - is the device alive right now
               roaming              - is the principal genuinely abroad
               location_verification- is the device where it should be
+
+(Binding and identity - number_verification and kyc_match - are proved once when
+the mandate is created, not re-run per transaction, so they are not yours to
+choose here.)
 
 Low risk: the cheap hijack checks only. Medium: add continuity or context where
 it is informative. High: add the signals that expose interception and identity
@@ -217,9 +227,11 @@ class WakalahSupervisor:
         )
         proposal: PlanProposal = result.output  # type: ignore[assignment]
 
-        # Number Verification needs a 3-legged consent token, which belongs to
-        # mandate creation rather than per-transaction checking.
-        signals = [s for s in proposal.signals if s is not Signal.NUMBER_VERIFICATION]
+        # Binding and identity are proved once, at mandate creation: Number
+        # Verification needs a 3-legged consent token, and KYC Match compares a
+        # claimed identity that does not change per transaction. Filtered here so
+        # a model cannot pull issuance-time checks into the hot path.
+        signals = [s for s in proposal.signals if s not in ISSUANCE_ONLY_SIGNALS]
         plan = VerificationPlan(
             risk_tier=state.risk_tier, signals=signals, rationale=proposal.rationale
         )

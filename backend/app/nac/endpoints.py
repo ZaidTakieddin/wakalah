@@ -19,6 +19,15 @@ from typing import Any
 
 from app.models.domain import Signal
 
+KYC_FILL_IN_PATH = "/passthrough/camara/v1/kyc-fill-in/kyc-fill-in/v0.4/fill-in"
+"""Operator-held registration data for a number.
+
+Not a verification signal — it returns identity *data* rather than a verdict —
+so it is fetched directly rather than living in SPECS. Used at mandate creation
+to autofill a principal's identity from the operator (the "instant onboarding"
+case on our roadmap, docs/04 section 3).
+"""
+
 # Default demo area: Budapest, where the Nokia simulators "live" (docs/08).
 DEFAULT_AREA: dict[str, Any] = {
     "areaType": "CIRCLE",
