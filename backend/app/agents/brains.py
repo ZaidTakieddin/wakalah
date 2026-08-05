@@ -6,10 +6,13 @@ agent brain, so nothing here calls them (docs/09 D16).
 
 Why a chain rather than one model:
 
-    Gemini   deliberate reasoning   (free tier, generous limits)
-    Groq     low-latency reasoning  (free tier, checkout hot path)
-    Ollama   local, offline         (survives dead venue wi-fi / rate limits)
-    heuristic  deterministic rules  (last resort: the demo still runs)
+    gemini       deliberate reasoning  (Flash: risk classification, interpretation)
+    gemini_fast  low-latency reasoning (Flash-Lite: the checkout hot path, and a
+                 separate quota, so a rate limit on one model does not stop both)
+    groq         low-latency reasoning (approved and integrated, but returns HTTP
+                 403 "access denied" from our region — see docs/09 D26)
+    ollama       local, offline        (survives dead venue wi-fi / rate limits)
+    heuristic    deterministic rules   (last resort: the demo still runs)
 
 The heuristic is *not* the product — it is graceful degradation, and every
 result records which brain produced it so the UI can label it honestly rather
@@ -35,6 +38,11 @@ GEMINI_MODEL = "gemini-flash-latest"
 """A moving alias on purpose. Pinning `gemini-2.5-flash` failed with "no longer
 available to new users" — a pinned model can be retired out from under a new
 API key, and a demo that breaks on model retirement is a demo that breaks."""
+
+GEMINI_FAST_MODEL = "gemini-flash-lite-latest"
+"""The low-latency tier. Two jobs at once: it keeps the fast/deliberate split
+that Groq was meant to provide, and it draws on a different model quota, so a
+rate limit on Flash does not take the whole agent down."""
 
 GROQ_MODEL = "llama-3.3-70b-versatile"
 OLLAMA_MODEL = "llama3.1:8b"
@@ -73,7 +81,7 @@ class BrainRouter:
         """Every brain this environment could use, in preference order."""
         chain: list[str] = []
         if settings.gemini_api_key:
-            chain.append("gemini")
+            chain.extend(["gemini", "gemini_fast"])
         if settings.groq_api_key:
             chain.append("groq")
         chain.append("ollama")  # local; may or may not be running
@@ -117,12 +125,13 @@ class BrainRouter:
     def _build_agent(self, brain: str, output_type: type[T], instructions: str) -> Any:
         from pydantic_ai import Agent
 
-        if brain == "gemini":
+        if brain in {"gemini", "gemini_fast"}:
             from pydantic_ai.models.google import GoogleModel
             from pydantic_ai.providers.google import GoogleProvider
 
             model: Any = GoogleModel(
-                GEMINI_MODEL, provider=GoogleProvider(api_key=settings.gemini_api_key)
+                GEMINI_MODEL if brain == "gemini" else GEMINI_FAST_MODEL,
+                provider=GoogleProvider(api_key=settings.gemini_api_key),
             )
         elif brain == "groq":
             from pydantic_ai.models.groq import GroqModel

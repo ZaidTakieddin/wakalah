@@ -89,7 +89,7 @@ The demo's high-risk path **must visibly pull Call Forwarding + a continuity sig
 The review (pt 21) folds the flat Mandate/Risk/Sentinel triad under a **Supervisor Agent** for clarity. We keep the specialist roles **named and visible** (the Phase-2 rubric scores *multi-agent* orchestration — a single opaque brain would score worse), and we keep the **Sentinel as an independent asynchronous listener** (there is no in-flight transaction to "supervise" when an operator pushes a swap event).
 
 ```
-        WAKALAH SUPERVISOR AGENT   (LangGraph; Gemini reason / Groq fast; Ollama fallback)
+        WAKALAH SUPERVISOR AGENT   (LangGraph; Gemini Flash reason / Flash-Lite fast; Ollama fallback)
         request-time decision flow:
            ┌───────────────┬───────────────┬────────────────────┐
            ▼               ▼               ▼                    ▼
