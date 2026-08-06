@@ -46,10 +46,13 @@ from app.models.domain import (
 )
 from app.nac.client import NacClient
 from app.policy.engine import PolicyEngine
+from app.scenario.engine import BeatResult, BeatRunner, ScenarioEngine, scenario
+from app.scenario.script import COMPROMISED_MSISDN, UNAVAILABLE_MSISDN, Beat
 from app.store import memory
 from app.store.audit import audit, principal_ref
 
 DEMO_MANDATE_ID = "man_amina_001"
+NO_MANDATE_YET = "No mandate yet — run the 'mandate' beat first"
 
 _nac: NacClient | None = None
 _policy = PolicyEngine()
@@ -239,10 +242,11 @@ async def evaluate_transaction(request: EvaluateRequest) -> EvaluateResponse:
     if state.decision is None:  # pragma: no cover - graph always decides
         raise HTTPException(status_code=500, detail="no decision produced")
 
-    memory.decisions.put(state.decision)
-    await audit.record_decision(state.decision, mandate)
+    decision = _recheck_mandate(tx, mandate, state)
+    memory.decisions.put(decision)
+    await audit.record_decision(decision, mandate)
     response = EvaluateResponse.from_decision(
-        state.decision, latency_ms=int((time.perf_counter() - started) * 1000)
+        decision, latency_ms=int((time.perf_counter() - started) * 1000)
     )
     bus.publish("decision.final", response.model_dump(mode="json", by_alias=True))
     return response
@@ -254,6 +258,115 @@ async def get_transaction(transaction_id: str) -> EvaluateResponse:
     if decision is None:
         raise HTTPException(status_code=404, detail="transaction not found")
     return EvaluateResponse.from_decision(decision)
+
+
+# ------------------------------------------------------------------- scenario
+class _ApiBeatRunner(BeatRunner):
+    """Executes beats by calling the service's own handlers.
+
+    Deliberately goes through the real endpoints rather than shortcutting to the
+    supervisor: what the audience sees is exactly what a partner integration
+    would get.
+    """
+
+    async def execute(self, beat: Beat, engine: ScenarioEngine) -> BeatResult:
+        if beat.kind == "mandate":
+            mandate = await create_mandate(CreateMandateRequest(**beat.payload))
+            engine.mandate_id = mandate.mandate_id
+            return BeatResult(
+                beat_id=beat.id,
+                title=beat.title,
+                ok=True,
+                summary=f"Mandate {mandate.mandate_id} for '{mandate.principal_id}'",
+                detail={
+                    "mandateId": mandate.mandate_id,
+                    "principal": mandate.principal_id,
+                    "amountLimit": mandate.amount_limit,
+                },
+            )
+
+        if beat.kind == "operator_event":
+            if engine.mandate_id is None:
+                return BeatResult(beat.id, beat.title, False, NO_MANDATE_YET)
+            mandate = await revoke_mandate(
+                engine.mandate_id, beat.payload.get("reason", "sim_swap")
+            )
+            return BeatResult(
+                beat_id=beat.id,
+                title=beat.title,
+                ok=mandate.status == MandateStatus.REVOKED.value,
+                summary=f"Mandate {mandate.mandate_id} revoked ({beat.payload.get('reason')})",
+                detail={"mandateId": mandate.mandate_id, "status": mandate.status},
+            )
+
+        # transaction beats
+        payload = dict(beat.payload)
+        compromised = payload.pop("useCompromisedPersona", False)
+        unavailable = payload.pop("useUnavailablePersona", False)
+
+        mandate_id = engine.mandate_id
+        if compromised or unavailable:
+            msisdn = COMPROMISED_MSISDN if compromised else UNAVAILABLE_MSISDN
+            alt = await create_mandate(
+                CreateMandateRequest(
+                    principal_msisdn=msisdn,
+                    agent_id="agent_rasheed_clone" if compromised else "agent_rasheed",
+                    agent_key_fingerprint="fp_clone" if compromised else "fp_rasheed_ed25519",
+                    amount_limit=2000,
+                    beneficiary_ids=[],
+                )
+            )
+            mandate_id = alt.mandate_id
+        if mandate_id is None:
+            return BeatResult(beat.id, beat.title, False, "No mandate yet — run 'mandate' first")
+
+        decision = await evaluate_transaction(EvaluateRequest(mandate_id=mandate_id, **payload))
+        return BeatResult(
+            beat_id=beat.id,
+            title=beat.title,
+            ok=True,
+            summary=(
+                f"{decision.decision.upper()} (tier {decision.risk_tier}), "
+                f"{len(decision.evidence_summary)} signals"
+            ),
+            detail={
+                "decision": decision.decision,
+                "riskTier": decision.risk_tier,
+                "reasonCodes": decision.reason_codes,
+                "agentProposal": decision.agent_proposal,
+                "policyOverrodeAgent": decision.policy_overrode_agent,
+                "signals": list(decision.evidence_summary),
+            },
+        )
+
+
+@app.get("/v1/scenario")
+async def scenario_status() -> dict[str, Any]:
+    """The script, and how far through it we are."""
+    return scenario.status()
+
+
+@app.post("/v1/scenario/reset")
+async def scenario_reset() -> dict[str, Any]:
+    scenario.reset()
+    return scenario.status()
+
+
+@app.post("/v1/scenario/beats/{beat_id}")
+async def scenario_run_beat(beat_id: str) -> dict[str, Any]:
+    """Run one beat — the presenter's remote."""
+    try:
+        result = await scenario.run(beat_id, _ApiBeatRunner())
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown beat: {beat_id}") from None
+    return result.__dict__
+
+
+@app.post("/v1/scenario/run-all")
+async def scenario_run_all() -> dict[str, Any]:
+    """Run the whole story — for rehearsals and pre-demo checks."""
+    results = await scenario.run_all(_ApiBeatRunner())
+    return {"results": [r.__dict__ for r in results]}
 
 
 # --------------------------------------------------------------------- stream
@@ -280,6 +393,41 @@ async def websocket_stream(websocket: WebSocket) -> None:
         pass
     finally:
         bus.unsubscribe(queue)
+
+
+def _recheck_mandate(tx: TransactionRequest, mandate: Mandate, state: Any) -> Any:
+    """Re-read the mandate after evidence gathering, before committing.
+
+    Gathering signals takes seconds, and a revocation can arrive inside that
+    window — which is exactly the case Wakalah exists for. Re-deciding against
+    the mandate's current state is what makes "revoked mid-transaction" real
+    rather than a story: the evidence is already in hand, so this is one cheap
+    deterministic pass, not another round of network calls.
+    """
+    decision = state.decision
+    current = memory.mandates.get(tx.mandate_id)
+    if current is None or current.status is mandate.status:
+        return decision
+
+    revised = _policy.decide(
+        tx,
+        current,
+        state.evidence,
+        agent_tier=state.agent_tier,
+        agent_proposal=state.agent_proposal,
+        agent_rationale=state.agent_rationale,
+    )
+    bus.publish(
+        "mandate.changed_mid_flight",
+        {
+            "transactionId": tx.transaction_id,
+            "statusAtStart": mandate.status.value,
+            "statusNow": current.status.value,
+            "verdictBefore": decision.verdict.value,
+            "verdictNow": revised.verdict.value,
+        },
+    )
+    return revised
 
 
 def _mandate_response(mandate: Mandate) -> MandateResponse:
