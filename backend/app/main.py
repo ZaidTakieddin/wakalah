@@ -47,6 +47,7 @@ from app.models.domain import (
 from app.nac.client import NacClient
 from app.policy.engine import PolicyEngine
 from app.store import memory
+from app.store.audit import audit, principal_ref
 
 DEMO_MANDATE_ID = "man_amina_001"
 
@@ -112,9 +113,24 @@ async def health() -> dict[str, Any]:
         "nac_mode": settings.nac_mode,
         "policy_version": _policy.version,
         "brains_configured": router.configured(),
+        "audit_backend": audit.backend,
         "mandates": len(memory.mandates.list()),
         "decisions": len(memory.decisions.list()),
         "ws_subscribers": bus.subscriber_count,
+    }
+
+
+@app.get("/v1/principals/{msisdn}/history")
+async def principal_history(msisdn: str, limit: int = 20) -> dict[str, Any]:
+    """The compliance-officer view: recent decisions for one principal.
+
+    Served from the audit trail, keyed by the pseudonymous principal reference
+    rather than the phone number.
+    """
+    return {
+        "principalRef": principal_ref(msisdn),
+        "backend": audit.backend,
+        "decisions": await audit.history_for(msisdn, limit=limit),
     }
 
 
@@ -146,6 +162,7 @@ async def create_mandate(request: CreateMandateRequest) -> MandateResponse:
         ),
     )
     memory.mandates.put(mandate)
+    await audit.record_mandate(mandate)
     bus.publish(
         "mandate.updated",
         {
@@ -223,6 +240,7 @@ async def evaluate_transaction(request: EvaluateRequest) -> EvaluateResponse:
         raise HTTPException(status_code=500, detail="no decision produced")
 
     memory.decisions.put(state.decision)
+    await audit.record_decision(state.decision, mandate)
     response = EvaluateResponse.from_decision(
         state.decision, latency_ms=int((time.perf_counter() - started) * 1000)
     )
