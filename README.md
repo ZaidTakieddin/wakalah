@@ -39,6 +39,7 @@ README.md    — you are here
 | [07-repo-and-backend.md](docs/07-repo-and-backend.md) | Repo conventions, backend blueprint, frontend contract |
 | [08-nac-api-catalog.md](docs/08-nac-api-catalog.md) | Full NaC API inventory: endpoints, requests, expected responses, agent-decision notes |
 | [09-master-explanation.md](docs/09-master-explanation.md) | **Start here if you're new** — every term explained from zero, every decision with its why, the full Wakalah rationale. Living doc, updated with every step |
+| [10-frontend-guide.md](docs/10-frontend-guide.md) | **For the frontend** — how to run it, every API endpoint and live event, TypeScript types, and how the data should be presented on screen |
 
 ## Do this week (blocking items first)
 
