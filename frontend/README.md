@@ -23,6 +23,12 @@ No API keys needed on this side: the backend holds every credential. The UI only
 - Interactive API docs: <http://127.0.0.1:8000/docs>
 - Live event stream: `ws://127.0.0.1:8000/ws`
 
+## The shape of the UI
+
+A **Trust Operations Console** — the screen a bank's fraud desk would watch. Header · scenario ribbon · incoming request · **decision pipeline** (the centrepiece) · evidence by trust dimension + live CAMARA log · verdict bar · recent-decisions strip. Full spec with component-by-component detail is in the guide, §7.
+
+**Not a chatbot.** A chat box where a human types "send 100 QAR to Ben" makes us look like a commodity banking assistant, and it contradicts our own premise — in Wakalah the human is asleep and an *agent* initiates. Human context lives in the scenario narration instead.
+
 ## The three things the UI must show
 
 1. **The agent's plan changing with risk** — 1 check for a routine payment, 7–8 for a risky one. This is what the hackathon scores under "Agentic AI & Multi-API Orchestration."

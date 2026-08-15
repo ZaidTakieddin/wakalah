@@ -264,46 +264,160 @@ export function useWakalahStream(onEvent: (e: WsEvent) => void) {
 
 ## 7. How the data should appear — the UI design
 
-### Layout: three zones, always visible
+### The concept: a Trust Operations Console
+
+Ask who would ever look at a Wakalah screen in production: a **fraud/risk analyst** at a bank, a **compliance officer**, an **integration engineer**. Never a consumer — the consumer's agent transacts while they sleep, which is the whole premise.
+
+So the honest UI is an **operations console**, in the family of Stripe Radar or Sift. That is also the most persuasive thing to put in front of judges: it looks like something a bank could buy, not a hackathon toy.
+
+> ❌ **Not a chatbot.** A chat box where a human types *"send 100 QAR to Ben"* files us under "AI banking assistant" — a commodity category — and quietly contradicts our own problem statement (*the human isn't there*). Human context belongs in the scenario narration, not a fake conversation.
+
+### The layout
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  HEADER  Wakalah · connection dot · brains: gemini · audit: supabase  │
-├────────────────────────────────┬─────────────────────────────────────┤
-│  ① THE STORY                   │  ③ LIVE NETWORK CALLS               │
-│  narration + beat timeline     │  every CAMARA call as it happens    │
-│                                │  (this is the proof it's real)      │
-│  ② THE DECISION                │                                     │
-│  reasoning trace → verdict     │                                     │
-└────────────────────────────────┴─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ WAKALAH · Trust Layer for AI-Agent Transactions   ● live  brain:gemini  ⛁ db │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ ▸ SCENARIO   ①mandate ②routine ③step-up ④out-of-scope ⑤SIM SWAP ⑥clone ⑦outage│
+│   "The fraudster's copy of the agent asks for a large transfer…"              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ INCOMING REQUEST                                                              │
+│   agent_rasheed_clone  →  1,800 QAR  →  ben_attacker      ⚠ NEW BENEFICIARY   │
+│   mandate man_0001 · limit 2,000/mo · principal Arjona · status REVOKED       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ DECISION PIPELINE                                            checks run:  8   │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │
+│  │🧠CLASSIFY│▸│🧠 PLAN  │▸│⚖ FLOOR  │▸│🔌GATHER │▸│🧠INTERP │▸│⚖ DECIDE │    │
+│  │  HIGH   │ │5 checks │ │ +3 added│ │  8/8    │ │  DENY   │ │  DENY   │    │
+│  │ gemini  │ │ gemini  │ │ policy  │ │  1.9s   │ │ gemini  │ │ policy  │    │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘    │
+│  ▸ "large transfer to an unknown beneficiary on a line with hijack signals"   │
+├────────────────────────────────────────┬─────────────────────────────────────┤
+│ EVIDENCE · 5 trust dimensions          │ LIVE CAMARA CALLS · Nokia NaC       │
+│                                        │                                     │
+│ HIJACK          ⚠ 3 findings           │ POST …/sim-swap/v0/check   200 0.9s │
+│  ⚠ SIM Swap      swapped      🟢LIVE   │   → {"swapped": true}               │
+│  ⚠ Device Swap   swapped      🟢LIVE   │ POST …/device-swap/check   200 0.8s │
+│  ⚠ Forwarding    active       🟢LIVE   │   → {"swapped": true}               │
+│                                        │ POST …/call-forwarding     200 1.2s │
+│ CONTINUITY      ⚠ 1 finding            │   → {"active": true}                │
+│  ⚠ Recycling     subscriber changed    │ …                                   │
+│  ✓ Tenure        PAYG                  │                                     │
+│                                        │                                     │
+│ CONTEXT         ✓ clear                │                                     │
+├────────────────────────────────────────┴─────────────────────────────────────┤
+│  ⛔ DENY          agent proposed DENY → policy DENY                           │
+│  NUMBER_RECYCLED · SIM_SWAP_RECENT_HIGH_VALUE · DEVICE_SWAP_RECENT ·          │
+│  CALL_FORWARDING_ACTIVE                          policy v1 · 12.4s · audited  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ RECENT   ✅ routine 1 check  │  ⚠️ step-up 7 checks  │  ⛔ clone 8 checks      │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Zone ③ stays on screen permanently. It is the single most persuasive element you can show a Nokia/GSMA judge: *real API calls, scrolling live.*
+### Component 1 — Header
 
-### ① The story panel
+`GET /health` on load, plus the WebSocket state. Connection dot (green connected / amber reconnecting / red down), `brains_configured[0]`, and `audit_backend`. If `audit_backend` starts with `"memory"`, show an amber **DEGRADED** chip — surfacing graceful degradation is worth more than hiding it.
 
-Driven by `scenario.beat.started`. Show `title`, `narration`, and — importantly — **`expect`** ("what to watch for"). Render `labels[]` as small muted chips: *"simulated operator event"*, *"real CAMARA calls"*. Below it, a timeline of the 7 beats with the current one highlighted; fetch from `GET /v1/scenario`.
+### Component 2 — Scenario ribbon
 
-### ② The reasoning trace — your centrepiece
+The presenter's remote *and* the human story, so no chat is needed.
 
-Append one row per `agent.trace` event, animating in (framer-motion is perfect here):
+- Beats from `GET /v1/scenario` → seven numbered buttons, `POST /v1/scenario/beats/{id}` on click.
+- On `scenario.beat.started`: show `narration` as the caption, `expect` as a muted "watch for…" line, and `labels[]` as small chips (*"simulated operator event"*, *"real CAMARA calls"*).
+- On `scenario.beat.finished`: tick the beat. Disable all buttons while a beat runs.
 
-```
-🧠 classify_risk     [gemini · 6.1s]   Risk classified HIGH
-   └ agent: high · policy baseline: high
-🧠 build_plan        [gemini · 5.2s]   Agent planned 5 checks
-   └ sim_swap, device_swap, call_forwarding, number_recycling, tenure
-⚖️ enforce_floor                       Policy floor added 2 checks
-   └ + reachability, location_verification
-🔌 gather_evidence   [1.9s]            7/7 signals returned
-🧠 interpret         [gemini · 7.0s]   Agent proposes DENY
-⚖️ decide                              POLICY DENY
-```
+### Component 3 — Incoming request
 
-Rules:
-- **🧠 AI steps and ⚖️ POLICY steps must look different** (colour + icon). This is the architecture, visible.
-- Show `brain` as a small chip. If `degraded: true`, chip reads **"fallback rules"** in amber — honest, and it demonstrates graceful degradation rather than hiding it.
-- `enforce_floor` with `addedByPolicy.length > 0` deserves emphasis: *the policy added checks the agent didn't plan.*
+From `transaction.started` plus the mandate. Show requesting `agentId`, amount, beneficiary, and a ⚠ chip when `beneficiaryIsNew`. Second line: mandate id, limit, principal, **status** — status flipping to `REVOKED` between beats 5 and 6 is a story beat in itself.
+
+### Component 4 — Decision pipeline ⭐ the centrepiece
+
+Six fixed nodes, filled in by `agent.trace` events in order:
+
+| Node | `step` | Headline value | Sub-label |
+|---|---|---|---|
+| 🧠 CLASSIFY | `classify_risk` | `detail.agentTier` uppercased | `brain` |
+| 🧠 PLAN | `build_plan` | `detail.signals.length` + " checks" | `brain` |
+| ⚖ FLOOR | `enforce_floor` | `+N added` or `met` | `policy` |
+| 🔌 GATHER | `gather_evidence` | `usable/total` | `latencyMs` |
+| 🧠 INTERP | `interpret` | proposed verdict | `brain` |
+| ⚖ DECIDE | `decide` | final verdict | `policy` |
+
+Rules that carry the architecture:
+
+- **🧠 AI nodes and ⚖ POLICY nodes must be visually distinct** — different colour and icon. The alternation *is* the "AI proposes, policy disposes" argument.
+- Node states: `idle` (dim outline) → `running` (pulsing border) → `done` (filled). Advance on each event; the node that hasn't fired yet is the one pulsing.
+- `enforce_floor` with `detail.addedByPolicy.length > 0` gets emphasis — *policy added checks the agent didn't plan*.
+- `decide` with `detail.policyOverrodeAgent` gets a badge — *policy overrode the agent*.
+- `degraded: true` on any node → amber **"fallback rules"** chip instead of the brain name.
+- Below the row, show the current step's `detail.rationale` as one line of plain language.
+- **`checks run: N`** in the corner, large. This number is the rubric point.
+
+### Component 5 — Evidence, grouped by dimension
+
+From `evidenceSummary` (and `nac.call` for live fill-in). Four groups in fixed order — **HIJACK · IDENTITY · CONTINUITY · CONTEXT** (BINDING appears at mandate time) — each with a header showing findings count.
+
+Card states: **green ✓** clean · **amber/red ⚠** risk found · **grey** `available: false` with its `errorCode`.
+
+The grouping is worth the effort: it turns "we called ten APIs" into "we answer five different questions."
+
+### Component 6 — Live CAMARA log
+
+Append-only, newest at the bottom, auto-scrolling, monospace. Method, path (truncate the long `/passthrough/camara/v1/…` prefix), status, latency, then the response on an indented line. Colour non-2xx amber — a `503` from the error-simulator persona is a *feature* in the outage beat.
+
+**Keep this panel on screen permanently.** It is the single most persuasive element for a Nokia/GSMA judge: real API calls, scrolling live.
+
+### Component 7 — Verdict bar
+
+From `decision.final`. Large verdict, colour-coded (**allow** green · **challenge** amber · **deny** red). Beside it, when `policyOverrodeAgent` is true: `agent proposed X → policy Y` with an arrow. Then `reasonCodes` as chips — keep the raw code visible (partners build on them) with a human sentence on hover or beneath. Footer: `policyVersion`, `latencyMs`, and an "audited" marker.
+
+### Component 8 — RECENT strip
+
+The last three decisions: verdict icon, beat name, **check count**. This is the cheapest high-value component in the whole UI — `routine 1 check · step-up 7 · clone 8` makes the agent's judgment undeniable at a glance. **If you build one thing beyond the basics, build this.**
+
+### Event → element map
+
+| Event | Updates |
+|---|---|
+| `scenario.beat.started` | ribbon caption, labels; clear pipeline + evidence |
+| `transaction.started` | incoming-request strip; pipeline → node 1 running |
+| `agent.trace` | the matching pipeline node; rationale line; `checks run` |
+| `nac.call` | live log row; evidence card fills in |
+| `decision.final` | verdict bar; RECENT strip |
+| `mandate.updated` / `mandate.revoked` | mandate status in the request strip |
+| `mandate.changed_mid_flight` | override banner (see below) |
+| `scenario.beat.finished` | tick the beat, re-enable buttons |
+| `scenario.reset` | clear everything |
+
+### Motion and timing
+
+A decision takes **5–25 seconds**, and the pipeline is what turns that into theatre rather than dead air:
+
+- Node transitions ~200ms ease-out; pulsing border on the running node (~1.2s loop).
+- Log rows and evidence cards slide/fade in over ~150ms — enough to notice, not enough to annoy.
+- The verdict bar arrives with a short scale-in; it should feel like a stamp landing.
+- **Never a full-screen spinner.** If nothing has arrived for >30s, show a quiet "still working…" line rather than replacing the pipeline.
+
+### Colour tokens (dark theme suits an ops console, and reads better on video)
+
+| Token | Use |
+|---|---|
+| AI accent (e.g. violet) | 🧠 nodes, brain chips |
+| Policy accent (e.g. cyan/slate) | ⚖ nodes, policy badges |
+| Green | allow, clean signals, `LIVE` chip |
+| Amber | challenge, degraded, cached/simulated, non-2xx |
+| Red | deny, risk findings, revocation |
+| Muted grey | unavailable signals, idle nodes |
+
+### The revocation moment (`mandate.revoked`, `mandate.changed_mid_flight`)
+
+The demo's dramatic peak. Full-width red banner, brief flash, mandate status flipping `active → REVOKED` in the request strip. On `mandate.changed_mid_flight`, show *"verdict changed mid-transaction: ALLOW → DENY"* — a revocation landing while the decision was still being made.
+
+### What not to build
+
+- **No chat box** — see the concept note above.
+- **No free-text parsing/NLU** — it adds latency, a failure mode on stage, and makes us the assistant we say we aren't. Beat buttons are the input.
+- **No consumer-app furniture** — avatars, message bubbles, "how can I help?". Wakalah is infrastructure; it should look like infrastructure.
 
 ### The verdict card (`decision.final`)
 
@@ -409,12 +523,15 @@ Expected results (use these to check your rendering is right):
 
 ## 10. Suggested build order
 
-1. Health badge + WebSocket connection dot — proves the wiring.
-2. The **live API panel** — pure `nac.call` rendering, immediately impressive.
-3. The **reasoning trace** — `agent.trace`, with AI/POLICY styling.
-4. The **verdict card** — including the agent-vs-policy comparison.
-5. **Signal cards** grouped by dimension, with honesty chips.
-6. The **beat buttons** + narration panel.
-7. The **revocation** dramatics.
+1. **Header** + WebSocket connection dot — proves the wiring end to end.
+2. **Live CAMARA log** (component 6) — pure `nac.call` rendering. Easiest win, instantly impressive.
+3. **Decision pipeline** (component 4) — the centrepiece, with 🧠/⚖ styling and node states.
+4. **Verdict bar** (component 7) — including the agent-vs-policy comparison.
+5. **Evidence cards** grouped by dimension (component 5), honesty chip on every one.
+6. **Scenario ribbon** + beat buttons (component 2) and the **incoming request** strip (component 3).
+7. **RECENT strip** (component 8) — cheap, and it makes the check-count contrast undeniable.
+8. **Revocation** dramatics.
 
-Steps 2–4 alone make a compelling demo. Everything after is polish that raises the score.
+Steps 2–4 alone make a compelling demo. Everything after raises the score.
+
+**The one-line test for whether the UI is doing its job:** can someone who has never seen Wakalah watch a routine payment and then the cloned-agent attempt, and *see* that the system decided to work harder the second time? If yes, the orchestration criterion is won on screen rather than in narration.
