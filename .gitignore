@@ -1,0 +1,33 @@
+# secrets — never commit; rotate any key that ever lands in history
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+# node / frontend
+node_modules/
+.next/
+dist/
+build/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# local-only claude settings (shared settings stay in git)
+.claude/settings.local.json
+
+# personal prep notes - intentionally never committed
+judge-prep-course.md
+codebase-walkthrough.md

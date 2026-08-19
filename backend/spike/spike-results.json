@@ -1,0 +1,88 @@
+﻿{
+    "_meta":  {
+                  "mutations":  true,
+                  "base":  "https://network-as-code.p-eu.rapidapi.com",
+                  "phone":  "+99999991000",
+                  "ts":  "2026-07-14T18:23:29.7245277Z"
+              },
+    "sim_swap_check":  {
+                           "body":  "{\"swapped\":true}",
+                           "status":  200
+                       },
+    "sim_swap_retrieve_date":  {
+                                   "body":  "{\"latestSimChange\":\"2026-07-14T18:13:34.998788Z\"}",
+                                   "status":  200
+                               },
+    "device_swap_check":  {
+                              "body":  "{\"swapped\":true}",
+                              "status":  200
+                          },
+    "reachability":  {
+                         "body":  "{\"device\":{\"phoneNumber\":\"+99999991000\"},\"reachable\":true,\"connectivity\":[\"SMS\"],\"lastStatusTime\":\"2026-07-14T18:23:36.600032Z\"}",
+                         "status":  200
+                     },
+    "roaming":  {
+                    "body":  "{\"device\":{\"phoneNumber\":\"+99999991000\"},\"lastStatusTime\":\"2026-07-14T18:23:37.135933Z\",\"roaming\":true,\"countryCode\":36,\"countryName\":[\"HU\"]}",
+                    "status":  200
+                },
+    "connectivity":  {
+                         "body":  "{\"connectivityStatus\":\"CONNECTED_SMS\"}",
+                         "status":  200
+                     },
+    "location_retrieve":  {
+                              "body":  "{\"lastLocationTime\":\"2026-07-14T18:23:38.754772Z\",\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":47.48627616952785,\"longitude\":19.07915612501993},\"radius\":1000}}",
+                              "status":  200
+                          },
+    "location_verify":  {
+                            "body":  "{\"verificationResult\":\"FALSE\",\"lastLocationTime\":\"2026-07-14T18:23:39.569135\"}",
+                            "status":  200
+                        },
+    "congestion_query":  {
+                             "body":  "[{\"timeIntervalStart\":\"2026-07-14T18:18:40.046799Z\",\"timeIntervalStop\":\"2026-07-14T18:23:40.046799Z\",\"congestionLevel\":\"High\",\"confidenceLevel\":30},{\"timeIntervalStart\":\"2026-07-14T18:13:40.046799Z\",\"timeIntervalStop\":\"2026-07-14T18:18:40.046799Z\",\"congestionLevel\":\"High\",\"confidenceLevel\":61},{\"timeIntervalStart\":\"2026-07-14T18:08:40.046799Z\",\"timeIntervalStop\":\"2026-07-14T18:13:40.046799Z\",\"congestionLevel\":\"High\",\"confidenceLevel\":8},{\"timeIntervalStart\":\"2026-07-14T18:03:40.046799Z\",\"timeIntervalStop\":\"2026-07-14T18:08:40.046799Z\",\"congestionLevel\":\"Medium\",\"confidenceLevel\":51},{\"timeIntervalStart\":\"2026-07-14T17:58:40.046799Z\",\"timeIntervalStop\":\"2026-07-14T18:03:40.046799Z\",\"congestionLevel\":\"High\",\"confidenceLevel\":91}]",
+                             "status":  200
+                         },
+    "tenure_check":  {
+                         "body":  "{\"tenureDateCheck\":true,\"contractType\":\"PAYG\"}",
+                         "status":  200
+                     },
+    "number_recycling_check":  {
+                                   "body":  "{\"phoneNumberRecycled\":true}",
+                                   "status":  200
+                               },
+    "call_forwarding_unconditional":  {
+                                          "body":  "{\"active\":true}",
+                                          "status":  200
+                                      },
+    "kyc_match_minimal":  {
+                              "body":  "{\"nameMatch\":\"false\",\"birthdateMatch\":\"false\"}",
+                              "status":  200
+                          },
+    "age_verification":  {
+                             "body":  "{\"ageCheck\":\"true\",\"verifiedStatus\":true,\"identityMatchScore\":60}",
+                             "status":  200
+                         },
+    "number_verification_no_code":  {
+                                        "body":  "",
+                                        "status":  401
+                                    },
+    "qod_create":  {
+                       "body":  "{\"qosProfile\":\"QOS_E\",\"device\":{\"phoneNumber\":\"+99999991000\",\"ipv4Address\":{\"publicAddress\":\"1.1.1.2\",\"privateAddress\":\"1.1.1.2\"}},\"applicationServer\":{\"ipv4Address\":\"5.6.7.8\"},\"sessionId\":\"37e4b0e4-6f2f-44e8-94b1-42c8bba8f26f\",\"qosStatus\":\"REQUESTED\",\"startedAt\":\"2026-07-14T18:23:46.251442Z\",\"expiresAt\":\"2026-07-14T18:24:46.251445Z\",\"duration\":60}",
+                       "status":  201
+                   },
+    "qod_delete":  {
+                       "body":  [
+
+                                ],
+                       "status":  204
+                   },
+    "geofence_create":  {
+                            "body":  "{\"protocol\":\"HTTP\",\"sink\":\"https://example.com/nac-sink\",\"types\":[\"org.camaraproject.geofencing-subscriptions.v0.area-entered\"],\"config\":{\"subscriptionDetail\":{\"device\":{\"phoneNumber\":\"+99999991000\"},\"area\":{\"areaType\":\"CIRCLE\",\"center\":{\"latitude\":25.276987,\"longitude\":55.296249},\"radius\":2000}},\"subscriptionExpireTime\":\"2026-07-14T19:23:47Z\",\"subscriptionMaxEvents\":5,\"initialEvent\":true},\"id\":\"5abff153-03f6-4be2-a72c-fc861c6aad8f\",\"startsAt\":\"2026-07-14T18:23:47.342007Z\"}",
+                            "status":  201
+                        },
+    "geofence_delete":  {
+                            "body":  [
+
+                                     ],
+                            "status":  204
+                        }
+}

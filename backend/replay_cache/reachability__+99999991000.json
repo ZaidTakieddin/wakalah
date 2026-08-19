@@ -1,0 +1,10 @@
+{
+  "device": {
+    "phoneNumber": "+99999991000"
+  },
+  "reachable": true,
+  "connectivity": [
+    "SMS"
+  ],
+  "lastStatusTime": "2026-08-19T14:55:29.668862Z"
+}
