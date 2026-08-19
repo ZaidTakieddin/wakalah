@@ -21,7 +21,7 @@ const traceTitles: Record<string, string> = {
   enforce_floor: "Applying required safeguards",
   gather_evidence: "Collecting security evidence",
   interpret: "Reviewing the evidence",
-  decide: "Applying security policy",
+  decide: "Preparing an AI recommendation",
 };
 
 function asRecord(value: unknown): UnknownRecord {
