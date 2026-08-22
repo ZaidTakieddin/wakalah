@@ -29,7 +29,7 @@ class MandateStore:
     def get(self, mandate_id: str) -> Mandate | None:
         return self._items.get(mandate_id)
 
-    def list(self) -> list[Mandate]:
+    def list_all(self) -> list[Mandate]:
         return list(self._items.values())
 
     def for_msisdn(self, msisdn: str) -> list[Mandate]:
@@ -57,7 +57,7 @@ class DecisionStore:
     def get(self, transaction_id: str) -> Decision | None:
         return self._items.get(transaction_id)
 
-    def list(self) -> list[Decision]:
+    def list_all(self) -> list[Decision]:
         return list(self._items.values())
 
 

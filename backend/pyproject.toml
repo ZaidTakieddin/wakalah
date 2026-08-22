@@ -18,6 +18,7 @@ dependencies = [
 dev = [
     "ruff",
     "mypy",
+    "types-PyYAML",
     "pytest",
     "pytest-asyncio",
 ]

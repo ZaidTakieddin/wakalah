@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import yaml
 
@@ -36,6 +36,17 @@ from app.models.domain import (
 RULES_DIR = Path(__file__).resolve().parent
 
 TIER_ORDER: dict[RiskTier, int] = {RiskTier.LOW: 0, RiskTier.MEDIUM: 1, RiskTier.HIGH: 2}
+
+
+class FreshnessParams(TypedDict):
+    """Keyword fetch-parameters passed through to NacClient.
+
+    A closed TypedDict (not `dict[str, int]`) so callers can unpack it with
+    `**` next to other keyword arguments without type ambiguity.
+    """
+
+    max_age_hours: int
+    device_swap_max_age_hours: int
 
 
 def _max_tier(*tiers: RiskTier) -> RiskTier:
@@ -113,7 +124,7 @@ class PolicyEngine:
             }
         )
 
-    def freshness_params(self, tier: RiskTier) -> dict[str, int]:
+    def freshness_params(self, tier: RiskTier) -> FreshnessParams:
         """Fetch parameters that tighten with risk (a stricter question, not just
         more questions)."""
         fresh = self.rules["freshness"]

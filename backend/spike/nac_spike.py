@@ -16,15 +16,17 @@ Setup:
     pip install requests
     python nac_spike.py
 """
+
 from __future__ import annotations
 
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import requests
+
 
 # ---------------------------------------------------------------- env
 def load_env(path: Path) -> None:
@@ -35,6 +37,7 @@ def load_env(path: Path) -> None:
         if line and not line.startswith("#") and "=" in line:
             k, _, v = line.partition("=")
             os.environ.setdefault(k.strip(), v.strip())
+
 
 load_env(Path(__file__).parent / ".env")
 
@@ -147,10 +150,14 @@ def call(name: str, path: str, body: dict, method: str = "POST") -> dict:
 
 
 def main() -> None:
-    results: dict[str, dict] = {"_meta": {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "base": BASE, "phone": PHONE, "mutations": MUTATIONS,
-    }}
+    results: dict[str, dict] = {
+        "_meta": {
+            "ts": datetime.now(UTC).isoformat(),
+            "base": BASE,
+            "phone": PHONE,
+            "mutations": MUTATIONS,
+        }
+    }
 
     for name, (path, body) in ENDPOINTS.items():
         results[name] = call(name, path, body)
@@ -159,14 +166,19 @@ def main() -> None:
         # --- QoD session: create -> delete -------------------------------
         qod_body = {
             "qosProfile": "QOS_E",
-            # QoD is flow-oriented: device MUST carry an ipv4Address (confirmed Jul 7 — 400 without, 201 with)
-            "device": {**DEVICE, "ipv4Address": {"publicAddress": "1.1.1.2", "privateAddress": "1.1.1.2"}},
+            # QoD is flow-oriented: device MUST carry an ipv4Address
+            # (confirmed Jul 7 — 400 without, 201 with)
+            "device": {
+                **DEVICE,
+                "ipv4Address": {"publicAddress": "1.1.1.2", "privateAddress": "1.1.1.2"},
+            },
             "applicationServer": {"ipv4Address": "5.6.7.8"},
             "duration": 60,
         }
         created = call("qod_create", "/qod/v0/sessions", qod_body)
         results["qod_create"] = created
-        sid = created.get("body", {}).get("sessionId") if isinstance(created.get("body"), dict) else None
+        body = created.get("body")
+        sid = body.get("sessionId") if isinstance(body, dict) else None
         if sid:
             results["qod_delete"] = call("qod_delete", f"/qod/v0/sessions/{sid}", {}, "DELETE")
 
@@ -177,20 +189,20 @@ def main() -> None:
             "types": ["org.camaraproject.geofencing-subscriptions.v0.area-entered"],
             "config": {
                 "subscriptionDetail": {"device": DEVICE, "area": AREA},
-                "initialEvent": True,   # fires immediately if already inside — demo gold
+                "initialEvent": True,  # fires immediately if already inside — demo gold
                 "subscriptionMaxEvents": 5,
-                "subscriptionExpireTime": (
-                    datetime.now(timezone.utc) + timedelta(hours=1)
-                ).isoformat().replace("+00:00", "Z"),
+                "subscriptionExpireTime": (datetime.now(UTC) + timedelta(hours=1))
+                .isoformat()
+                .replace("+00:00", "Z"),
             },
         }
         created = call("geofence_create", "/geofencing-subscriptions/v0.3/subscriptions", geo_body)
         results["geofence_create"] = created
-        gid = created.get("body", {}).get("id") if isinstance(created.get("body"), dict) else None
+        body = created.get("body")
+        gid = body.get("id") if isinstance(body, dict) else None
         if gid:
-            results["geofence_delete"] = call(
-                "geofence_delete", f"/geofencing-subscriptions/v0.3/subscriptions/{gid}", {}, "DELETE"
-            )
+            delete_path = f"/geofencing-subscriptions/v0.3/subscriptions/{gid}"
+            results["geofence_delete"] = call("geofence_delete", delete_path, {}, "DELETE")
 
     out = Path(__file__).parent / "spike-results.json"
     out.write_text(json.dumps(results, indent=2), encoding="utf-8")
