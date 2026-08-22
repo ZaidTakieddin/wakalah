@@ -70,6 +70,11 @@ class Settings(BaseSettings):
 
     nac_timeout_seconds: float = Field(default=20.0, alias="NAC_TIMEOUT_SECONDS")
 
+    nac_cache_ttl_seconds: float = Field(default=0.0, alias="NAC_CACHE_TTL_SECONDS")
+    """Reuse a fresh *live* response within this window instead of re-calling the
+    network; a reused answer is labelled `cached`, never `live`. 0 (default)
+    keeps every demo call real."""
+
     replay_dir: Path = Field(default=BACKEND_DIR / "replay_cache", alias="REPLAY_DIR")
 
     @property

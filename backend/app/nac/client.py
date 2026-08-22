@@ -77,6 +77,14 @@ class NacClient:
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
         self._http: httpx.AsyncClient | None = None
         self.consent = consent or ConsentTokenProvider()
+        self._ttl_cache: dict[tuple[str, str], tuple[float, EvidenceRecord]] = {}
+        """(signal, msisdn, params-hash) -> (expiry, record). Only usable LIVE
+        evidence is cached; a reused answer is relabelled `cached`, never `live`
+        — the honesty label travels with the data."""
+
+    @property
+    def _cache_ttl(self) -> float:
+        return settings.nac_cache_ttl_seconds
 
     async def aclose(self) -> None:
         """Close the shared connection pool."""
@@ -110,6 +118,11 @@ class NacClient:
         """Fetch one signal. Always returns a record — failures are evidence too."""
         spec = SPECS[signal]
         body = spec.build_body(msisdn, params)
+
+        if self.mode == "live":
+            cached = self._cache_get(signal, msisdn, body)
+            if cached is not None:
+                return cached
 
         token = access_token
         if spec.needs_bearer:
@@ -171,7 +184,7 @@ class NacClient:
         if self.record:
             self._write_replay(signal, msisdn, raw)
 
-        return EvidenceRecord(
+        record = EvidenceRecord(
             signal=signal,
             dimension=SIGNAL_DIMENSION[signal],
             subject={"phoneNumber": msisdn},
@@ -184,6 +197,8 @@ class NacClient:
                 else ConsentStatus.NOT_REQUIRED_AT_RUNTIME
             ),
         )
+        self._cache_put(signal, msisdn, body, record)
+        return record
 
     async def fetch_identity(self, msisdn: str) -> dict[str, Any] | None:
         """Operator-held registration data for a number (CAMARA KYC Fill-in).
@@ -250,6 +265,35 @@ class NacClient:
         return bundle
 
     # ----------------------------------------------------------------- internals
+    @staticmethod
+    def _cache_key(signal: Signal, msisdn: str, body: dict[str, Any]) -> tuple[str, str]:
+        # The request body is part of the key: "swapped in 24h" and
+        # "swapped in 720h" are different questions, not different labels.
+        return (signal.value, f"{msisdn}|{json.dumps(body, sort_keys=True)}")
+
+    def _cache_get(
+        self, signal: Signal, msisdn: str, body: dict[str, Any]
+    ) -> EvidenceRecord | None:
+        if self._cache_ttl <= 0:
+            return None
+        entry = self._ttl_cache.get(self._cache_key(signal, msisdn, body))
+        if entry is None:
+            return None
+        expires_at, record = entry
+        if time.monotonic() >= expires_at:
+            del self._ttl_cache[self._cache_key(signal, msisdn, body)]
+            return None
+        return record.model_copy(update={"source": EvidenceSource.CACHED})
+
+    def _cache_put(
+        self, signal: Signal, msisdn: str, body: dict[str, Any], record: EvidenceRecord
+    ) -> None:
+        if self._cache_ttl <= 0 or not record.is_usable:
+            # A failed call is never cached: an outage must not look like data.
+            return
+        key = self._cache_key(signal, msisdn, body)
+        self._ttl_cache[key] = (time.monotonic() + self._cache_ttl, record)
+
     @staticmethod
     def _parse(response: httpx.Response) -> Any:
         try:

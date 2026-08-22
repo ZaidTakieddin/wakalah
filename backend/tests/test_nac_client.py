@@ -24,6 +24,7 @@ import httpx
 import pytest
 
 import app.nac.client as client_module
+from app.config import settings
 from app.models.domain import EvidenceBundle, EvidenceSource, Signal
 from app.nac.client import NacClient
 
@@ -265,3 +266,89 @@ def test_fetch_many_maps_results_and_failures_per_signal(tmp_path: Path) -> None
     assert device is not None and not device.is_usable
     assert device.error_code == "OUTAGE"
     assert bundle.usable_signals() == {Signal.SIM_SWAP}
+
+
+# ---------------------------------------------------------------- ttl cache
+def test_ttl_cache_relabels_the_reuse_and_skips_the_second_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "nac_cache_ttl_seconds", 60.0)
+    handler, seen = counting_handler([httpx.Response(200, json={"swapped": False})])
+    client = make_client(handler, replay_dir=tmp_path)
+
+    async def run() -> Any:
+        async with client:
+            first = await client.fetch(Signal.SIM_SWAP, CLEAN)
+            second = await client.fetch(Signal.SIM_SWAP, CLEAN)
+            return first, second
+
+    first, second = asyncio.run(run())
+
+    assert first.source is EvidenceSource.LIVE
+    assert second.source is EvidenceSource.CACHED  # honesty label travels
+    assert second.result == first.result
+    assert len(seen) == 1
+
+
+def test_caching_is_off_by_default(tmp_path: Path) -> None:
+    monkey_free_handler, seen = counting_handler([httpx.Response(200, json={"swapped": False})])
+    client = make_client(monkey_free_handler, replay_dir=tmp_path)
+
+    async def run() -> Any:
+        async with client:
+            one = await client.fetch(Signal.SIM_SWAP, CLEAN)
+            two = await client.fetch(Signal.SIM_SWAP, CLEAN)
+            return one, two
+
+    one, two = asyncio.run(run())
+
+    assert one.source is EvidenceSource.LIVE
+    assert two.source is EvidenceSource.LIVE
+    assert len(seen) == 2
+
+
+def test_failures_are_never_cached(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An outage must not look like data — and once real data arrives it can be
+    reused."""
+    monkeypatch.setattr(settings, "nac_cache_ttl_seconds", 60.0)
+    handler, seen = counting_handler(
+        [
+            httpx.Response(503, json={"code": "OUTAGE"}),
+            httpx.Response(503, json={"code": "OUTAGE"}),
+            httpx.Response(503, json={"code": "OUTAGE"}),
+            httpx.Response(200, json={"swapped": False}),
+        ]
+    )
+    client = make_client(handler, replay_dir=tmp_path)
+
+    async def run() -> Any:
+        async with client:
+            failed = await client.fetch(Signal.SIM_SWAP, CLEAN)
+            live = await client.fetch(Signal.SIM_SWAP, CLEAN)
+            cached = await client.fetch(Signal.SIM_SWAP, CLEAN)
+            return failed, live, cached
+
+    failed, live, cached = asyncio.run(run())
+
+    assert not failed.is_usable
+    assert live.source is EvidenceSource.LIVE
+    assert cached.source is EvidenceSource.CACHED
+    assert len(seen) == 4  # three spent attempts + one real recovery
+
+
+def test_different_questions_are_different_cache_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """maxAge=24h and maxAge=720h are different questions, not a cache hit."""
+    monkeypatch.setattr(settings, "nac_cache_ttl_seconds", 60.0)
+    handler, seen = counting_handler([httpx.Response(200, json={"swapped": False})])
+    client = make_client(handler, replay_dir=tmp_path)
+
+    async def run() -> Any:
+        async with client:
+            await client.fetch(Signal.SIM_SWAP, CLEAN, max_age_hours=24)
+            await client.fetch(Signal.SIM_SWAP, CLEAN, max_age_hours=720)
+
+    asyncio.run(run())
+
+    assert len(seen) == 2
