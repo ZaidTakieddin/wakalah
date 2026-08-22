@@ -4,10 +4,14 @@ NacClient and the supervisor publish; WebSocket clients subscribe. Neither
 producer knows a UI exists, which keeps the live API panel and the reasoning
 trace from leaking into the decision path.
 
-Two rules:
+Three rules:
     * publishing never blocks a decision — a slow or dead subscriber is dropped
       from its own queue, not allowed to stall a payment verification;
-    * every event is a plain JSON-serialisable dict {type, ts, payload}.
+    * every event is a typed schema (app/models/events.py) rendered to the wire
+      as JSON {type, ts, payload} — one schema feeds both this stream and the
+      audit trail (CLAUDE.md invariant 4);
+    * an event type without a registered schema raises here, at publish time,
+      instead of leaking an undocumented shape onto the stream.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ from collections import deque
 from typing import Any
 
 from app.models.domain import utc_now
+from app.models.events import encode_payload
 
 MAX_QUEUE = 256
 REPLAY_BUFFER = 200
@@ -33,11 +38,14 @@ class EventBus:
 
     # ---------------------------------------------------------------- publish
     def publish(self, event_type: str, payload: dict[str, Any]) -> None:
-        """Publish an event. Safe to call from sync code and from any task."""
+        """Validate, serialize and fan out an event.
+
+        Safe to call from sync code and from any task.
+        """
         event = {
             "type": event_type,
             "ts": utc_now().isoformat(),
-            "payload": payload,
+            "payload": encode_payload(event_type, payload),
         }
         self._recent.append(event)
 
