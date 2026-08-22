@@ -501,11 +501,13 @@ Expected results (use these to check your rendering is right):
 |---|---|---|---|
 | `mandate` | — | KYC Fill-in | identity autofilled by the operator |
 | `routine` | **ALLOW** | **1** | small plan for a routine payment |
-| `stepup` | **CHALLENGE** | **7** | *the plan grew* |
+| `stepup` | **CHALLENGE** | **4+** | *the plan grew* — first payment to a new beneficiary always steps up (policy v2) |
 | `out_of_scope` | **DENY** | 4 | mandate scope refuses it |
 | `hijack_event` | — | — | revocation, machine-to-machine |
-| `cloned_agent` | **DENY** | **8** | 4 hijack/continuity reason codes |
-| `degraded` | **CHALLENGE** | 4 | missing evidence never means approved |
+| `cloned_agent` | **DENY** | **4+** | hijack AND continuity reason codes (`NUMBER_RECYCLED` included) |
+| `degraded` | **CHALLENGE** | 3–4 | missing evidence never means approved |
+
+Signal counts are floors-plus-agent: the deterministic layer guarantees these minimums every run; a bolder agent plan may add more.
 
 **If you build one thing well, make it the contrast between `routine` (1 check) and `cloned_agent` (8 checks).** Consider keeping the previous beat's plan visible so the growth is literally side by side.
 

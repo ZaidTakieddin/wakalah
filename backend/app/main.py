@@ -55,7 +55,7 @@ DEMO_MANDATE_ID = "man_amina_001"
 NO_MANDATE_YET = "No mandate yet — run the 'mandate' beat first"
 
 _nac: NacClient | None = None
-_policy = PolicyEngine()
+_policy = PolicyEngine("v2")
 
 
 @contextlib.asynccontextmanager
@@ -277,7 +277,14 @@ class _ApiBeatRunner(BeatRunner):
                 beat_id=beat.id,
                 title=beat.title,
                 ok=True,
-                summary=f"Mandate {mandate.mandate_id} for '{mandate.principal_id}'",
+                summary=(
+                    f"Mandate {mandate.mandate_id} for '{mandate.principal_id}'"
+                    if mandate.principal_id
+                    else (
+                        f"Mandate {mandate.mandate_id} "
+                        "(operator identity unavailable in replay mode)"
+                    )
+                ),
                 detail={
                     "mandateId": mandate.mandate_id,
                     "principal": mandate.principal_id,

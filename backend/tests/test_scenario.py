@@ -100,12 +100,21 @@ def test_offline_story_outcomes_match_the_demo_contract(offline_app: Any) -> Non
     assert any("INSUFFICIENT_EVIDENCE" in c for c in degraded["reasonCodes"])
 
 
-def test_agent_caution_escalates_a_clean_medium_risk_transfer(tier_aware_app: Any) -> None:
-    """'AI proposes, policy disposes': STEP_UP proposed on clean evidence is
-    honoured as AGENT_REQUESTED_STEP_UP — friction up, refusal never."""
+def test_first_material_payment_to_a_new_beneficiary_is_always_challenged(
+    tier_aware_app: Any,
+) -> None:
+    """v2's deterministic friction: whether the agent is cautious or lenient,
+    the policy steps up a first material payment to a new beneficiary
+    (docs/09 D29). The beat can no longer miss its mark."""
     _, by_id = _run_all(tier_aware_app)
 
     stepup = by_id["stepup"]["detail"]
     assert stepup["decision"] == "challenge"
-    assert "AGENT_REQUESTED_STEP_UP" in stepup["reasonCodes"]
-    assert stepup["policyOverrodeAgent"] is False
+    assert "NEW_BENEFICIARY_MATERIAL_VALUE" in stepup["reasonCodes"]
+    # The plan visibly grew beyond routine's single check.
+    assert set(routine_signals(by_id)) < set(stepup["signals"])
+    assert "number_recycling" in stepup["signals"]
+
+
+def routine_signals(by_id: dict[str, dict[str, Any]]) -> list[str]:
+    return by_id["routine"]["detail"]["signals"]
