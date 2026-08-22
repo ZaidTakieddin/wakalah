@@ -52,6 +52,18 @@ class Settings(BaseSettings):
     never presented as a live network response (docs/04 section 5).
     """
 
+    nv_scope: str = Field(
+        default="dpv:FraudPreventionAndDetection number-verification:verify",
+        alias="NV_SCOPE",
+    )
+    """DPV purpose + service scope requested in the Number Verification
+    consent flow (the exact string proven in backend/spike/nv_flow_probe.ps1)."""
+
+    nv_redirect_uri: str = Field(default="https://example.com/redirect", alias="NV_REDIRECT_URI")
+    """The authorize chain must land somewhere we can read ?code= from. The
+    sandbox accepts an arbitrary URI (auto-approves, headless); production
+    points this at our real callback."""
+
     nac_record: bool = Field(default=True, alias="NAC_RECORD")
     """When live, write every response into the replay cache. Rehearsals build
     the fallback data automatically."""

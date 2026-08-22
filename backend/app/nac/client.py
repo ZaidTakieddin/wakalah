@@ -36,6 +36,7 @@ from app.models.domain import (
     EvidenceSource,
     Signal,
 )
+from app.nac.consent import ConsentTokenProvider
 from app.nac.endpoints import KYC_FILL_IN_PATH, SPECS
 
 CallHook = Callable[[dict[str, Any]], None]
@@ -66,6 +67,7 @@ class NacClient:
         record: bool | None = None,
         on_call: CallHook | None = None,
         replay_dir: Path | None = None,
+        consent: ConsentTokenProvider | None = None,
     ) -> None:
         self.mode = (mode or settings.nac_mode).lower()
         self.record = settings.nac_record if record is None else record
@@ -74,12 +76,14 @@ class NacClient:
         self.replay_dir.mkdir(parents=True, exist_ok=True)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
         self._http: httpx.AsyncClient | None = None
+        self.consent = consent or ConsentTokenProvider()
 
     async def aclose(self) -> None:
         """Close the shared connection pool."""
         if self._http is not None:
             await self._http.aclose()
             self._http = None
+        await self.consent.aclose()
 
     async def __aenter__(self) -> NacClient:
         return self
@@ -107,23 +111,32 @@ class NacClient:
         spec = SPECS[signal]
         body = spec.build_body(msisdn, params)
 
-        if spec.needs_bearer and not access_token:
-            return self._unavailable(
-                signal,
-                msisdn,
-                code="CONSENT_TOKEN_REQUIRED",
-                message=(
-                    "Number Verification needs a 3-legged consent token; run the "
-                    "operator consent flow first."
-                ),
-            )
+        token = access_token
+        if spec.needs_bearer:
+            if not token and self.mode == "live":
+                # Mint the 3-legged consent token on the fly (docs/02 D23 recipe).
+                token = await self.consent.token_for(msisdn)
+            if not token:
+                message = (
+                    "Number Verification needs a 3-legged consent token; the "
+                    "consent flow is unavailable right now."
+                    if self.mode == "live"
+                    else "Number Verification needs a 3-legged consent token; "
+                    "run the operator consent flow first."
+                )
+                return self._unavailable(
+                    signal,
+                    msisdn,
+                    code="CONSENT_TOKEN_REQUIRED",
+                    message=message,
+                )
 
         if self.mode == "replay":
             return self._from_replay(signal, msisdn, body)
 
         headers = dict(settings.nac_headers)
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         url = settings.nac_base_url + spec.path
 
         started = time.perf_counter()
