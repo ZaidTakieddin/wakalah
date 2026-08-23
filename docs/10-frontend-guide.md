@@ -12,13 +12,15 @@
 ```
 Check it: <http://127.0.0.1:8000/health> · interactive API docs: <http://127.0.0.1:8000/docs>
 
-**Terminal 2 — frontend** (from `frontend/`):
+**Terminal 2 — frontend.** The demo app lives on branch `yasser`, in `wakalah-balance-demo/` (Next.js + React 19 + Tailwind 4):
 ```
+git switch yasser           # or merge it into main first
+cd wakalah-balance-demo
 npm install
-npm run dev
+npm run dev                 # .env.local: WAKALAH_API_BASE=http://127.0.0.1:8000
 ```
 
-CORS is already open for any origin, so the Vite dev server works with no proxy.
+CORS is already open for any origin, so any dev server works with no proxy.
 
 **You do not need any API keys.** Everything (Nokia CAMARA, Gemini, Supabase) is called by the backend using Zaid's `backend/.env`. The frontend only ever talks to `http://127.0.0.1:8000`.
 
@@ -33,7 +35,7 @@ Two things happen on every request, and **the UI's whole job is to make them vis
 1. **An AI agent reasons** — it classifies risk, *chooses which checks to run*, reads the results, and proposes a verdict.
 2. **A deterministic policy engine decides** — it can overrule the agent, and it enforces a minimum set of checks the agent cannot skip.
 
-> The single most important thing to show on screen: **the agent's plan changes with risk.** A routine payment gets 1 check; a large transfer to a new beneficiary gets 7–8. That visible difference is what the judges score under "Agentic AI & Multi-API Orchestration."
+> The single most important thing to show on screen: **the agent's plan changes with risk.** A routine payment gets 1 check; a large transfer to a new beneficiary gets 4+ (policy-guaranteed floor, more if the agent adds). That visible difference is what the judges score under "Agentic AI & Multi-API Orchestration."
 
 ---
 
@@ -61,8 +63,8 @@ Use it for a connection indicator and to show which AI brains are live.
 ```json
 {
   "status": "ok",
-  "nac_mode": "live",
-  "policy_version": "v1",
+  "nac_mode": "replay",
+  "policy_version": "v2",
   "brains_configured": ["gemini", "gemini_fast", "groq", "ollama"],
   "audit_backend": "supabase",
   "mandates": 1,
@@ -70,10 +72,11 @@ Use it for a connection indicator and to show which AI brains are live.
   "ws_subscribers": 1
 }
 ```
-`audit_backend` may read `"memory (supabase unavailable: …)"` — that's the graceful-degradation path, worth surfacing as a small badge rather than hiding.
+`audit_backend` may read `"memory (supabase unavailable: …)"` — that's the graceful-degradation path, worth surfacing as a small badge rather than hiding. Two more honest-label notes: `nac_mode` is **`replay`** whenever the backend serves recorded responses (offline demo) — pair it with the 🔵 CACHED chips; and `brains_configured` lists what's *configured*, not what's *verified* — a dead brain shows up in events as `degraded` instead.
 
 ### `POST /v1/mandates` → 201
 Creates the authorization ("wakalah contract"). Leave `principalName` out and the operator's registered identity is filled in automatically via CAMARA KYC Fill-in.
+> In **replay mode** that autofill cannot run, so `principalId` arrives empty — render the MSISDN as the fallback label rather than an empty string.
 ```jsonc
 // request
 {
@@ -109,36 +112,55 @@ Creates the authorization ("wakalah contract"). Leave `principalName` out and th
 }
 ```
 ```jsonc
-// response (real capture)
+// response (real capture, policy v2)
 {
   "transactionId": "tx_demo_1",
   "decision": "challenge",             // "allow" | "challenge" | "deny"
-  "riskTier": "high",                  // "low" | "medium" | "high"
-  "reasonCodes": ["AGENT_REQUESTED_STEP_UP"],
-  "rationale": "no rule fired, but the agent asked for additional verification | agent: …",
+  "riskTier": "medium",                // "low" | "medium" | "high"
+  "reasonCodes": ["NEW_BENEFICIARY_MATERIAL_VALUE"],
+  "rationale": "first payment to ben_landlord of 1500 QAR | agent: …",
   "evidenceSummary": {
     "sim_swap": {
       "dimension": "hijack",
       "result": { "swapped": false },
-      "source": "live",                // live | cached | replay | simulated | unavailable
+      "source": "replay",              // live | cached | replay | simulated | unavailable
       "available": true,
       "errorCode": null
     },
     "call_forwarding": {
       "dimension": "hijack",
       "result": { "forwarding_active": false },
-      "source": "live", "available": true, "errorCode": null
+      "source": "replay", "available": true, "errorCode": null
     }
     // …one entry per signal checked
   },
   "challenge": { "challengeId": "chl_tx_demo_1", "method": "step_up_number_verification" },
-  "policyVersion": "v1",
-  "agentProposal": "challenge",        // what the AI proposed, BEFORE policy
-  "policyOverrodeAgent": false,        // ← show this when true
-  "decidedAt": "2026-08-06T12:50:24+00:00",
+  "policyVersion": "v2",
+  "agentProposal": "allow",            // what the AI proposed, BEFORE policy
+  "policyOverrodeAgent": true,         // ← show this when true
+  "decidedAt": "2026-08-22T17:50:24+00:00",
   "latencyMs": 20936
 }
 ```
+
+**Reason codes → human sentences** (keep the raw code visible; partners build on them):
+
+| Code | Say |
+|---|---|
+| `MANDATE_NOT_ACTIVE` | mandate revoked or expired |
+| `AMOUNT_EXCEEDS_MANDATE_LIMIT` | above what the principal authorized |
+| `BENEFICIARY_NOT_PERMITTED` | outside the mandate's beneficiary list |
+| `IDENTITY_MISMATCH` | claimed identity fails against operator records |
+| `NUMBER_RECYCLED` | the subscriber behind this number changed |
+| `SIM_SWAP_RECENT_HIGH_VALUE` | SIM swapped recently, on a high-value transfer (takeover pattern) |
+| `NEW_BENEFICIARY_MATERIAL_VALUE` | first-ever payment to this beneficiary at material size |
+| `SIM_SWAP_RECENT_LOW_VALUE` | recent SIM swap, smaller amount |
+| `DEVICE_SWAP_RECENT` | same SIM in a new device recently |
+| `CALL_FORWARDING_ACTIVE` | calls silently forwarded — possible OTP interception |
+| `PRINCIPAL_CHALLENGE_ONLY` | principal under challenge-only after a hijack signal |
+| `NUMBER_NOT_VERIFIED` / `DEVICE_UNREACHABLE` / `LOCATION_INCONSISTENT` | binding/reachability/context check failed |
+| `INSUFFICIENT_EVIDENCE` | required checks could not be completed — never auto-approves |
+| `AGENT_REQUESTED_STEP_UP` | no rule fired, but the AI asked for more verification |
 
 ### Other endpoints
 
@@ -154,6 +176,19 @@ Creates the authorization ("wakalah contract"). Leave `principalName` out and th
 | `POST /v1/scenario/reset` | start the story over |
 
 `GET /v1/principals/{msisdn}/history` returns `principalRef` — a SHA-256 hash, not the number. Show the hash; it's a privacy feature worth pointing at.
+
+`GET /v1/scenario` feeds the ribbon and timeline directly:
+```jsonc
+{
+  "beats": [
+    { "id": "routine", "title": "The monthly remittance", "narration": "…",
+      "expect": "ALLOW, on a small plan", "labels": ["real CAMARA calls"], "done": true }
+    // …seven beats, in story order
+  ],
+  "mandateId": "man_0001",
+  "results": [ /* one BeatResult per beat already run */ ]
+}
+```
 
 ---
 
@@ -172,14 +207,16 @@ On connect you receive a **replay of recent events** so a refresh mid-demo doesn
 |---|---|---|---|
 | `scenario.beat.started` | a demo beat begins | `id`, `title`, `narration`, `expect`, `labels[]` | the narration card / caption |
 | `transaction.started` | evaluation begins | `transactionId`, `amount`, `currency`, `beneficiaryIsNew`, `principal` | open the decision panel |
-| `agent.trace` | each agent/policy step | `step`, `summary`, `detail`, `brain`, `degraded`, `latencyMs` | **the reasoning trace** |
-| `nac.call` | every network call | `signal`, `path`, `request`, `response`, `status`, `latencyMs`, `source`, `simulatedDevice` | **the live API panel** |
+| `agent.trace` | each agent/policy step | **`transactionId`**, `step`, `summary`, `detail`, `brain`, `degraded`, `latencyMs` | **the reasoning trace** |
+| `nac.call` | every network call | `signal`, `path`, `request`, `response`, `status`, `latencyMs`, `source`, `simulatedDevice` — **no `transactionId`** | **the live API panel** |
 | `decision.final` | verdict ready | the whole `EvaluateResponse` | the verdict card |
 | `mandate.updated` | mandate created | `mandateId`, `status`, `identityAutofilledByOperator` | mandate card |
 | `mandate.revoked` | Sentinel fires | `mandateId`, `reason`, `status` | **the revocation moment** |
-| `mandate.changed_mid_flight` | revoked *during* evaluation | `statusAtStart`, `statusNow`, `verdictBefore`, `verdictNow` | a dramatic override banner |
+| `mandate.changed_mid_flight` | revoked *during* evaluation | `transactionId`, `statusAtStart`, `statusNow`, `verdictBefore`, `verdictNow` | a dramatic override banner |
 | `scenario.beat.finished` | beat done | `beatId`, `ok`, `summary`, `detail` | tick the beat in the timeline |
 | `scenario.reset` | story reset | `beats[]` | clear the stage |
+
+**Attribution rule:** only `agent.trace`, `decision.final`, and `mandate.changed_mid_flight` carry a `transactionId`. Route those by id; attribute everything else (`nac.call`, mandate events, scenario events) to the *currently active* evaluation — only one runs at a time.
 
 ### `agent.trace` steps, in order
 
@@ -285,10 +322,10 @@ So the honest UI is an **operations console**, in the family of Stripe Radar or 
 │   agent_rasheed_clone  →  1,800 QAR  →  ben_attacker      ⚠ NEW BENEFICIARY   │
 │   mandate man_0001 · limit 2,000/mo · principal Arjona · status REVOKED       │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ DECISION PIPELINE                                            checks run:  8   │
+│ DECISION PIPELINE                                            checks run:  5   │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐    │
 │  │🧠CLASSIFY│▸│🧠 PLAN  │▸│⚖ FLOOR  │▸│🔌GATHER │▸│🧠INTERP │▸│⚖ DECIDE │    │
-│  │  HIGH   │ │5 checks │ │ +3 added│ │  8/8    │ │  DENY   │ │  DENY   │    │
+│  │  MEDIUM │ │3 checks │ │ +2 added│ │  5/5    │ │CHALLENGE│ │  DENY   │    │
 │  │ gemini  │ │ gemini  │ │ policy  │ │  1.9s   │ │ gemini  │ │ policy  │    │
 │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘    │
 │  ▸ "large transfer to an unknown beneficiary on a line with hijack signals"   │
@@ -306,11 +343,12 @@ So the honest UI is an **operations console**, in the family of Stripe Radar or 
 │                                        │                                     │
 │ CONTEXT         ✓ clear                │                                     │
 ├────────────────────────────────────────┴─────────────────────────────────────┤
-│  ⛔ DENY          agent proposed DENY → policy DENY                           │
-│  NUMBER_RECYCLED · SIM_SWAP_RECENT_HIGH_VALUE · DEVICE_SWAP_RECENT ·          │
-│  CALL_FORWARDING_ACTIVE                          policy v1 · 12.4s · audited  │
+│  ⛔ DENY          agent proposed CHALLENGE → policy DENY [OVERRIDDEN]         │
+│  NEW_BENEFICIARY_MATERIAL_VALUE · NUMBER_RECYCLED ·                           │
+│  SIM_SWAP_RECENT_HIGH_VALUE · DEVICE_SWAP_RECENT · CALL_FORWARDING_ACTIVE     │
+│                                     policy v2 · 12.4s · audited               │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│ RECENT   ✅ routine 1 check  │  ⚠️ step-up 7 checks  │  ⛔ clone 8 checks      │
+│ RECENT   ✅ routine 1 check  │  ⚠️ step-up 4 checks  │  ⛔ clone 5 checks      │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -373,7 +411,7 @@ From `decision.final`. Large verdict, colour-coded (**allow** green · **challen
 
 ### Component 8 — RECENT strip
 
-The last three decisions: verdict icon, beat name, **check count**. This is the cheapest high-value component in the whole UI — `routine 1 check · step-up 7 · clone 8` makes the agent's judgment undeniable at a glance. **If you build one thing beyond the basics, build this.**
+The last three decisions: verdict icon, beat name, **check count**. This is the cheapest high-value component in the whole UI — `routine 1 check · step-up 4 · clone 5` makes the agent's judgment undeniable at a glance. **If you build one thing beyond the basics, build this.**
 
 ### Event → element map
 
@@ -419,41 +457,6 @@ The demo's dramatic peak. Full-width red banner, brief flash, mandate status fli
 - **No free-text parsing/NLU** — it adds latency, a failure mode on stage, and makes us the assistant we say we aren't. Beat buttons are the input.
 - **No consumer-app furniture** — avatars, message bubbles, "how can I help?". Wakalah is infrastructure; it should look like infrastructure.
 
-### The verdict card (`decision.final`)
-
-```
-        ╔═══════════════════════════════╗
-        ║   ⛔  DENY                     ║
-        ║   risk tier: HIGH             ║
-        ╚═══════════════════════════════╝
-   Agent proposed: STEP-UP  →  Policy: DENY   [POLICY OVERRODE AGENT]
-
-   Why:  NUMBER_RECYCLED · SIM_SWAP_RECENT_HIGH_VALUE
-         DEVICE_SWAP_RECENT · CALL_FORWARDING_ACTIVE
-```
-
-- Colours: **allow** green · **challenge** amber · **deny** red.
-- When `policyOverrodeAgent` is true, show the agent's proposal *next to* the verdict with an arrow. **This is the "AI proposes, policy disposes" moment** — don't bury it.
-- Turn `reasonCodes` into human sentences, but keep the code visible (partners build on the codes):
-  `SIM_SWAP_RECENT_HIGH_VALUE` → *"SIM swapped recently, on a high-value transfer"*.
-
-### Signal cards (`evidenceSummary` / `nac.call`)
-
-One card per signal, **grouped by the five trust dimensions**:
-
-```
-HIJACK          IDENTITY       CONTINUITY        CONTEXT
-┌────────────┐  ┌───────────┐  ┌─────────────┐  ┌──────────────┐
-│ SIM Swap   │  │ KYC Match │  │ Recycling   │  │ Reachability │
-│ ⚠ swapped  │  │ …         │  │ ⚠ changed   │  │ ✓ reachable  │
-│ live · 0.9s│  │           │  │ live · 0.5s │  │ live · 1.1s  │
-└────────────┘  └───────────┘  └─────────────┘  └──────────────┘
-```
-
-The dimension grouping is worth the effort: it turns "we called ten APIs" into "we answer five different questions." Read `dimension` straight off each `SignalEvidence`.
-
-Card states: **green** = clean · **red/amber** = risk found · **grey with error code** = `available: false`.
-
 ### 🔒 Honesty labels — non-negotiable
 
 Every signal carries `source`. **Render it on every card, always:**
@@ -466,21 +469,6 @@ Every signal carries `source`. **Render it on every card, always:**
 | `unavailable` | ⚪ **UNAVAILABLE** + error code |
 
 This is not decoration — it is a scored honesty feature and the reason judges will trust everything else on the screen. Never render a cached or simulated value as if it were live.
-
-### ③ The live API panel (`nac.call`)
-
-An append-only log, newest at the bottom, auto-scrolling:
-```
-POST /passthrough/camara/v1/sim-swap/sim-swap/v0/check      200   0.9s  live
-     → {"swapped": false}
-POST /device-status/device-reachability-status/v1/retrieve  200   1.1s  live
-     → {"reachable": true, "connectivity": ["DATA"]}
-```
-Show method, path, status, latency, and the response. Colour non-2xx amber — a `503` from the error-simulator persona is a *feature* in the degraded beat, not something to hide.
-
-### The revocation moment (`mandate.revoked`, `mandate.changed_mid_flight`)
-
-This is the demo's dramatic peak. Make it loud: full-width red banner, brief shake or flash, mandate card flipping `active → revoked`. If `mandate.changed_mid_flight` arrives, show *"verdict changed mid-transaction: ALLOW → DENY"* — that's revocation landing while the decision was still being made.
 
 ---
 
@@ -509,7 +497,7 @@ Expected results (use these to check your rendering is right):
 
 Signal counts are floors-plus-agent: the deterministic layer guarantees these minimums every run; a bolder agent plan may add more.
 
-**If you build one thing well, make it the contrast between `routine` (1 check) and `cloned_agent` (8 checks).** Consider keeping the previous beat's plan visible so the growth is literally side by side.
+**If you build one thing well, make it the contrast between `routine` (1 check) and `cloned_agent` (4–5 checks).** Consider keeping the previous beat's plan visible so the growth is literally side by side.
 
 ---
 
