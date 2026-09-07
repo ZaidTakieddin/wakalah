@@ -1,0 +1,35 @@
+# Render blueprint for the Wakalah backend (free tier, no card required).
+# Usage (dashboard, ~5 minutes): New → Web Service → connect ZaidTakieddin/wakalah
+# → Render picks up this file automatically. Then set the four secret env vars
+# below in the dashboard (never commit them) and deploy.
+#
+# After deploy: GET /health must show status ok. Test one live signal before
+# the demo; if the host region is ever restricted, flip NAC_MODE to replay.
+
+services:
+  - type: web
+    name: wakalah-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -e .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.3
+      - key: NAC_MODE
+        value: live
+      - key: NAC_RECORD
+        value: "false"
+      # Secrets below are intentionally empty here: sync:false makes the
+      # dashboard prompt for them at deploy time. Nothing secret ever lands
+      # in git (golden rule 1).
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
