@@ -19,6 +19,12 @@ cd wakalah-balance-demo
 npm install
 npm run dev                 # .env.local: WAKALAH_API_BASE=http://127.0.0.1:8000
 ```
+Against the **hosted** backend (Render) instead of localhost, point both variables at it — Vercel env dashboard or `.env.local`:
+```
+WAKALAH_API_BASE=https://<backend>.onrender.com
+NEXT_PUBLIC_WAKALAH_WS_URL=wss://<backend>.onrender.com/ws
+```
+(`wss`, not `ws` — the host redirects plain WebSocket handshakes to TLS. Miss the second variable and REST works while the live stream silently stays on localhost.)
 
 CORS is already open for any origin, so any dev server works with no proxy.
 
