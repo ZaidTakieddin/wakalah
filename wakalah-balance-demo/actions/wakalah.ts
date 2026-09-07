@@ -11,7 +11,8 @@ import type {
   MandateResponse,
 } from "@/lib/types";
 
-const getApiBase =  process.env.WAKALAH_API_BASE;
+const getApiBase =
+  process.env.WAKALAH_API_BASE ?? "http://127.0.0.1:8000";
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
