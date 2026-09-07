@@ -262,12 +262,15 @@ def test_token_cache_file_is_never_written_for_nv(tmp_path: Path) -> None:
     state: dict[str, int] = dict.fromkeys(
         ("client_credentials", "discovery", "authorize", "token_exchange", "verify"), 0
     )
+    transport = httpx.MockTransport(consent_aware_handler(state))
     client = NacClient(mode="live", record=True, replay_dir=tmp_path)
-    client._http = httpx.AsyncClient(transport=httpx.MockTransport(consent_aware_handler(state)))
+    client._http = httpx.AsyncClient(transport=transport)
+    client.consent._http = httpx.AsyncClient(transport=transport)
 
     async def run() -> Any:
         async with client:
-            await client.fetch(Signal.NUMBER_VERIFICATION, MSISDN)
+            record = await client.fetch(Signal.NUMBER_VERIFICATION, MSISDN)
+            assert record.is_usable  # the flow itself succeeded; only recording is skipped
 
     asyncio.run(run())
 

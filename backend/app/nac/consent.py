@@ -90,7 +90,6 @@ class ConsentTokenProvider:
             authorize_url,
             client_id=client_id,
             msisdn=msisdn,
-            headers=headers,
         )
         if code is None:
             return None
@@ -133,7 +132,6 @@ class ConsentTokenProvider:
         *,
         client_id: str,
         msisdn: str,
-        headers: dict[str, str],
     ) -> str | None:
         """Walk the redirect chain manually; the code arrives in a Location
         header pointed at our redirect_uri. No callback server needed."""
@@ -149,7 +147,10 @@ class ConsentTokenProvider:
         # our parameters are never re-appended to Nokia's own redirect URLs.
         url = str(httpx.Request("GET", authorize_url, params=params).url)
         for _hop in range(MAX_AUTH_HOPS):
-            response = await self._client().get(url, headers=headers, follow_redirects=False)
+            # Bare requests on purpose: the authorize chain leaves the RapidAPI
+            # gateway for Nokia's own auth hosts, which reject gateway headers
+            # with a bare 400 (found Sep 2026 — the July probe sent none either).
+            response = await self._client().get(url, follow_redirects=False)
             location = response.headers.get("location")
             if location is None:
                 self.last_error = f"authorize chain stopped at {response.status_code}"

@@ -181,7 +181,9 @@ class NacClient:
                 signal, msisdn, code=code, message=message, latency_ms=latency_ms
             )
 
-        if self.record:
+        if self.record and not spec.needs_bearer:
+            # Consent-bound answers are never recorded: a verification tied to
+            # someone's single-use consent must not become replayable evidence.
             self._write_replay(signal, msisdn, raw)
 
         record = EvidenceRecord(
