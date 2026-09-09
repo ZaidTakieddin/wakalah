@@ -36,7 +36,7 @@ from app.api.schemas import (
     MandateResponse,
 )
 from app.config import settings
-from app.events import bus
+from app.events import bus, transaction_scope
 from app.models.domain import (
     Mandate,
     MandateScope,
@@ -226,30 +226,33 @@ async def evaluate_transaction(request: EvaluateRequest) -> EvaluateResponse:
         )
 
     started = time.perf_counter()
-    bus.publish(
-        "transaction.started",
-        {
-            "transactionId": tx.transaction_id,
-            "amount": tx.amount,
-            "currency": tx.currency,
-            "beneficiaryIsNew": tx.beneficiary_is_new,
-            "principal": mandate.principal_id,
-        },
-    )
+    # Everything below — trace steps, network calls, the verdict — belongs to
+    # this evaluation; the bus attaches its id automatically.
+    with transaction_scope(tx.transaction_id):
+        bus.publish(
+            "transaction.started",
+            {
+                "transactionId": tx.transaction_id,
+                "amount": tx.amount,
+                "currency": tx.currency,
+                "beneficiaryIsNew": tx.beneficiary_is_new,
+                "principal": mandate.principal_id,
+            },
+        )
 
-    supervisor = WakalahSupervisor(nac=_nac_client(), policy=_policy, on_trace=on_trace)
-    state = await supervisor.evaluate(tx, mandate)
-    if state.decision is None:  # pragma: no cover - graph always decides
-        raise HTTPException(status_code=500, detail="no decision produced")
+        supervisor = WakalahSupervisor(nac=_nac_client(), policy=_policy, on_trace=on_trace)
+        state = await supervisor.evaluate(tx, mandate)
+        if state.decision is None:  # pragma: no cover - graph always decides
+            raise HTTPException(status_code=500, detail="no decision produced")
 
-    decision = _recheck_mandate(tx, mandate, state)
-    memory.decisions.put(decision)
-    await audit.record_decision(decision, mandate)
-    response = EvaluateResponse.from_decision(
-        decision, latency_ms=int((time.perf_counter() - started) * 1000)
-    )
-    bus.publish("decision.final", response.model_dump(mode="json", by_alias=True))
-    return response
+        decision = _recheck_mandate(tx, mandate, state)
+        memory.decisions.put(decision)
+        await audit.record_decision(decision, mandate)
+        response = EvaluateResponse.from_decision(
+            decision, latency_ms=int((time.perf_counter() - started) * 1000)
+        )
+        bus.publish("decision.final", response.model_dump(mode="json", by_alias=True))
+        return response
 
 
 @app.get("/v1/transactions/{transaction_id}", response_model=EvaluateResponse)

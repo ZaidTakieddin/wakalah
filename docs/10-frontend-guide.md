@@ -212,17 +212,17 @@ On connect you receive a **replay of recent events** so a refresh mid-demo doesn
 | `type` | When | Key payload fields | Render as |
 |---|---|---|---|
 | `scenario.beat.started` | a demo beat begins | `beatId`, `title`, `narration`, `expect`, `labels[]` | the narration card / caption |
-| `transaction.started` | evaluation begins | `transactionId`, `amount`, `currency`, `beneficiaryIsNew`, `principal` | open the decision panel |
-| `agent.trace` | each agent/policy step | **`transactionId`**, `step`, `summary`, `detail`, `brain`, `degraded`, `latencyMs` | **the reasoning trace** |
-| `nac.call` | every network call | `signal`, `path`, `request`, `response`, `status`, `latencyMs`, `source`, `simulatedDevice` — **no `transactionId`** | **the live API panel** |
-| `decision.final` | verdict ready | the whole `EvaluateResponse` | the verdict card |
-| `mandate.updated` | mandate created | `mandateId`, `status`, `identityAutofilledByOperator` | mandate card |
-| `mandate.revoked` | Sentinel fires | `mandateId`, `reason`, `status` | **the revocation moment** |
-| `mandate.changed_mid_flight` | revoked *during* evaluation | `transactionId`, `statusAtStart`, `statusNow`, `verdictBefore`, `verdictNow` | a dramatic override banner |
+| `transaction.started` | evaluation begins | `transactionId`, `beatId`, `amount`, `currency`, `beneficiaryIsNew`, `principal` | open the decision panel |
+| `agent.trace` | each agent/policy step | `transactionId`, `beatId`, `step`, `summary`, `detail`, `brain`, `degraded`, `latencyMs` | **the reasoning trace** |
+| `nac.call` | every network call | `signal`, `path`, `request`, `response`, `status`, `latencyMs`, `source`, `simulatedDevice`, `transactionId`, `beatId` | **the live API panel** |
+| `decision.final` | verdict ready | the whole `EvaluateResponse` (+ `beatId`, null outside beats) | the verdict card |
+| `mandate.updated` | mandate created | `mandateId`, `status`, `identityAutofilledByOperator`, `beatId` (when in-beat) | mandate card |
+| `mandate.revoked` | Sentinel fires | `mandateId`, `reason`, `status`, `beatId` (when in-beat) | **the revocation moment** |
+| `mandate.changed_mid_flight` | revoked *during* evaluation | `transactionId`, `beatId`, `statusAtStart`, `statusNow`, `verdictBefore`, `verdictNow` | a dramatic override banner |
 | `scenario.beat.finished` | beat done | `beatId`, `ok`, `summary`, `detail` | tick the beat in the timeline |
 | `scenario.reset` | story reset | `beats[]` | clear the stage |
 
-**Attribution rule:** only `agent.trace`, `decision.final`, and `mandate.changed_mid_flight` carry a `transactionId`. Route those by id; attribute everything else (`nac.call`, mandate events, scenario events) to the *currently active* evaluation — only one runs at a time.
+**Attribution rule (simple now):** every event inside a beat carries that beat's `beatId`; every event inside an evaluation carries its `transactionId`. No `beatId` = outside any beat; no `transactionId` on a `nac.call` = outside any evaluation (e.g. KYC Fill-in during mandate creation). Route runs by `transactionId`, group them under beats by `beatId` — no temporal guessing needed.
 
 ### `agent.trace` steps, in order
 
@@ -268,6 +268,7 @@ export interface EvaluateResponse {
   policyOverrodeAgent: boolean;
   decidedAt: string;
   latencyMs: number | null;
+  beatId: string | null;   // set when decided inside a scenario beat
 }
 
 export interface TraceStep {

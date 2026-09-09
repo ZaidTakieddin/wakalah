@@ -124,3 +124,79 @@ def test_every_registered_event_type_is_importable_and_named_by_string() -> None
         "scenario.reset",
     }
     assert set(PAYLOAD_MODELS) == expected
+
+
+# ------------------------------------------------------- ambient correlation
+def test_scopes_attach_ids_to_schemas_that_declare_them() -> None:
+    from app.events import EventBus, beat_scope, transaction_scope
+
+    bus = EventBus()
+    with beat_scope("stepup"), transaction_scope("tx_9"):
+        bus.publish(
+            "nac.call",
+            {
+                "signal": "sim_swap",
+                "path": "/check",
+                "request": {},
+                "response": {"swapped": False},
+                "status": 200,
+            },
+        )
+
+    payload = bus.recent()[-1]["payload"]
+    assert payload["beatId"] == "stepup"
+    assert payload["transactionId"] == "tx_9"
+
+
+def test_absent_scope_means_absent_keys_never_nulls() -> None:
+    from app.events import EventBus
+
+    bus = EventBus()
+    bus.publish(
+        "nac.call",
+        {
+            "signal": "sim_swap",
+            "path": "/check",
+            "request": {},
+            "response": {"swapped": False},
+            "status": 200,
+        },
+    )
+
+    payload = bus.recent()[-1]["payload"]
+    assert "beatId" not in payload
+    assert "transactionId" not in payload
+
+
+def test_explicit_ids_win_over_ambient_scopes() -> None:
+    from app.events import EventBus, beat_scope, transaction_scope
+
+    bus = EventBus()
+    with beat_scope("stepup"), transaction_scope("tx_9"):
+        bus.publish(
+            "agent.trace",
+            {
+                "transactionId": "tx_explicit",
+                "step": "decide",
+                "summary": "done",
+            },
+        )
+
+    payload = bus.recent()[-1]["payload"]
+    assert payload["transactionId"] == "tx_explicit"
+    assert payload["beatId"] == "stepup"
+
+
+def test_scopes_reset_after_the_block() -> None:
+    from app.events import EventBus, beat_scope, current_beat_id
+
+    bus = EventBus()
+    with beat_scope("routine"):
+        assert current_beat_id() == "routine"
+    assert current_beat_id() is None
+
+    bus.publish(
+        "mandate.revoked",
+        {"mandateId": "man_1", "reason": "x", "status": "revoked"},
+    )
+    assert "beatId" not in bus.recent()[-1]["payload"]

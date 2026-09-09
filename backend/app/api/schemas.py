@@ -121,6 +121,15 @@ class EvaluateResponse(ApiModel):
     policy_overrode_agent: bool = False
     decided_at: str
     latency_ms: int | None = None
+    beat_id: str | None = Field(
+        default=None,
+        description=(
+            "Which scenario beat produced this decision, when decided inside "
+            "one. Attached by the event bus on decision.final only — the REST "
+            "response carries null outside beats, keeping the stored audit "
+            "record free of demo scaffolding."
+        ),
+    )
 
     @classmethod
     def from_decision(

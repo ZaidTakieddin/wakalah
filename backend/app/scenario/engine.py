@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.events import bus
+from app.events import beat_scope, bus
 from app.scenario.script import BEATS, SCRIPT, Beat
 
 
@@ -74,7 +74,10 @@ class ScenarioEngine:
                 "labels": beat.labels,
             },
         )
-        result = await runner.execute(beat, self)
+        # Everything the beat triggers — evaluations, network calls, mandate
+        # changes — carries this beat's id on the stream from here on.
+        with beat_scope(beat.id):
+            result = await runner.execute(beat, self)
         self.results = [r for r in self.results if r.beat_id != beat.id] + [result]
         bus.publish("scenario.beat.finished", result.__dict__)
         return result

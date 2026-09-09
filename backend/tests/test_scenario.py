@@ -55,6 +55,46 @@ def test_every_beat_announces_itself_on_the_stream(offline_app: Any) -> None:
     assert finished == [b.id for b in SCRIPT]
 
 
+def test_every_in_beat_event_carries_its_beat_id(offline_app: Any) -> None:
+    """No orphan events: anything emitted while a beat runs — network calls,
+    trace steps, verdicts, mandate changes — names that beat."""
+    events, _ = _run_all(offline_app)
+    beat_ids = {b.id for b in SCRIPT}
+
+    for event in events:
+        payload = event["payload"]
+        if event["type"] in {"scenario.beat.started", "scenario.beat.finished"}:
+            assert payload["beatId"] in beat_ids
+        elif event["type"] == "scenario.reset":
+            assert "beatId" not in payload
+        else:
+            assert payload.get("beatId") in beat_ids, event["type"]
+
+
+def test_network_calls_carry_their_evaluation_id(offline_app: Any) -> None:
+    """A nac.call row can always be attached to the run it belongs to.
+
+    The one exception proves the rule: KYC Fill-in calls during mandate beats
+    run outside any evaluation, so they carry a beatId but no transactionId.
+    """
+    events, _ = _run_all(offline_app)
+
+    calls = [e for e in events if e["type"] == "nac.call"]
+    assert calls, "no network calls captured"
+    for event in calls:
+        payload = event["payload"]
+        assert payload["beatId"] in {b.id for b in SCRIPT}
+        if payload["signal"] != "kyc_match":
+            assert payload.get("transactionId"), payload
+    assert {e["payload"]["transactionId"] for e in calls if "transactionId" in e["payload"]} >= {
+        "demo_tx_routine",
+        "demo_tx_stepup",
+        "demo_tx_cloned",
+        # demo_tx_degraded excluded by design: the replay cache holds no files
+        # for the error persona, and a cache miss emits nothing at all.
+    }
+
+
 def test_reset_clears_the_stage(offline_app: Any) -> None:
     with TestClient(offline_app) as client:
         client.post("/v1/scenario/run-all")

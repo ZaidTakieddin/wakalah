@@ -45,6 +45,10 @@ class NacCall(EventPayload):
     latency_ms: int = 0
     source: str = "live"
     simulated_device: bool = False
+    transaction_id: str | None = None
+    """Which evaluation this call belongs to — attached by the bus when known."""
+    beat_id: str | None = None
+    """Which scenario beat was running — attached by the bus when known."""
 
 
 class AgentTrace(EventPayload):
@@ -57,6 +61,8 @@ class AgentTrace(EventPayload):
     brain: str | None = None
     degraded: bool = False
     latency_ms: int | None = None
+    beat_id: str | None = None
+    """Which scenario beat was running — attached by the bus when known."""
 
 
 class TransactionStarted(EventPayload):
@@ -67,6 +73,8 @@ class TransactionStarted(EventPayload):
     currency: str
     beneficiary_is_new: bool = False
     principal: str = ""
+    beat_id: str | None = None
+    """Which scenario beat was running — attached by the bus when known."""
 
 
 class MandateUpdated(EventPayload):
@@ -75,6 +83,8 @@ class MandateUpdated(EventPayload):
     mandate_id: str
     status: str
     identity_autofilled_by_operator: bool = False
+    beat_id: str | None = None
+    """Which scenario beat was running — attached by the bus when known."""
 
 
 class MandateRevoked(EventPayload):
@@ -83,6 +93,8 @@ class MandateRevoked(EventPayload):
     mandate_id: str
     reason: str
     status: str
+    beat_id: str | None = None
+    """Which scenario beat was running — attached by the bus when known."""
 
 
 class MandateChangedMidFlight(EventPayload):
@@ -93,6 +105,8 @@ class MandateChangedMidFlight(EventPayload):
     status_now: str
     verdict_before: str
     verdict_now: str
+    beat_id: str | None = None
+    """Which scenario beat was running — attached by the bus when known."""
 
 
 class ScenarioBeatStarted(EventPayload):
