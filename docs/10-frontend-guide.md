@@ -211,7 +211,7 @@ On connect you receive a **replay of recent events** so a refresh mid-demo doesn
 
 | `type` | When | Key payload fields | Render as |
 |---|---|---|---|
-| `scenario.beat.started` | a demo beat begins | `id`, `title`, `narration`, `expect`, `labels[]` | the narration card / caption |
+| `scenario.beat.started` | a demo beat begins | `beatId`, `title`, `narration`, `expect`, `labels[]` | the narration card / caption |
 | `transaction.started` | evaluation begins | `transactionId`, `amount`, `currency`, `beneficiaryIsNew`, `principal` | open the decision panel |
 | `agent.trace` | each agent/policy step | **`transactionId`**, `step`, `summary`, `detail`, `brain`, `degraded`, `latencyMs` | **the reasoning trace** |
 | `nac.call` | every network call | `signal`, `path`, `request`, `response`, `status`, `latencyMs`, `source`, `simulatedDevice` — **no `transactionId`** | **the live API panel** |

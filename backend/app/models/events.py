@@ -98,7 +98,7 @@ class MandateChangedMidFlight(EventPayload):
 class ScenarioBeatStarted(EventPayload):
     """A demo beat begins — the narration card."""
 
-    id: str
+    beat_id: str
     title: str
     narration: str
     expect: str = ""

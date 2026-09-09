@@ -67,7 +67,7 @@ class ScenarioEngine:
         bus.publish(
             "scenario.beat.started",
             {
-                "id": beat.id,
+                "beat_id": beat.id,
                 "title": beat.title,
                 "narration": beat.narration,
                 "expect": beat.expect,

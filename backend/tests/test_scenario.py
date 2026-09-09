@@ -49,7 +49,7 @@ def test_every_beat_announces_itself_on_the_stream(offline_app: Any) -> None:
     """Each beat is bracketed by started/finished events, in script order."""
     events, _ = _run_all(offline_app)
 
-    started = [e["payload"]["id"] for e in events if e["type"] == "scenario.beat.started"]
+    started = [e["payload"]["beatId"] for e in events if e["type"] == "scenario.beat.started"]
     finished = [e["payload"]["beatId"] for e in events if e["type"] == "scenario.beat.finished"]
     assert started == [b.id for b in SCRIPT]
     assert finished == [b.id for b in SCRIPT]
