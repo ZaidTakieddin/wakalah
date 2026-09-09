@@ -1,0 +1,98 @@
+# Wakalah policy rules — version v2
+#
+# This file is the deterministic authority. The AI agent proposes a risk tier,
+# a verification plan and a recommendation; these rules decide what actually
+# happens. Same facts + same rules => same verdict, always (docs/04 section 4).
+#
+# Versioned on purpose: every Decision records the policy_version that produced
+# it, so an auditor can replay a months-old verdict against the exact rules in
+# force at the time. Never edit a released version in place — add v3.
+#
+# v2 (Aug 22) changes over v1, both fixing demo beats that depended on LLM
+# generosity (docs/09 D29):
+#   * NEW_BENEFICIARY_MATERIAL_VALUE: a first-ever payment to a beneficiary at
+#     meaningful size is stepped up regardless of the agent's read — first
+#     payments deserve friction, and false declines cost real customers less
+#     than account takeovers.
+#   * Continuity coverage: paying someone NEW also requires usable proof that
+#     the number was not reassigned (number_recycling) — the reassigned-number
+#     takeover class, checked exactly when it matters.
+
+version: v2
+
+# --- Risk tiering ----------------------------------------------------------
+# The agent classifies risk, but it cannot classify BELOW this deterministic
+# baseline. Effective tier = max(agent tier, baseline tier). This is what stops
+# a mis-classification from under-checking a dangerous transaction.
+tiering:
+  medium_amount: 500          # >= this amount is at least MEDIUM
+  high_amount: 2000           # >= this amount is at least HIGH
+  new_beneficiary_min_tier: medium
+  challenge_only_min_tier: high   # a principal under challenge-only mode
+
+# --- Minimum verification floors ------------------------------------------
+# The plan the agent builds must contain at least these signals for the
+# effective tier. The agent may add more; it can never run fewer.
+floors:
+  issuance:                   # creating a mandate
+    low: [kyc_match, sim_swap]
+    medium: [kyc_match, sim_swap, device_swap]
+    high: [kyc_match, sim_swap, device_swap, number_recycling, tenure]
+  transaction:                # evaluating a payment
+    low: [sim_swap]
+    medium: [sim_swap, device_swap, call_forwarding]
+    high: [sim_swap, device_swap, call_forwarding, number_recycling, reachability]
+
+# --- Signal freshness ------------------------------------------------------
+# How far back a hijack check looks. Higher risk asks a stricter question:
+# "was there a swap in the last 24 hours" is stricter than "in the last 30 days".
+freshness:
+  sim_swap_max_age_hours:
+    low: 720
+    medium: 240
+    high: 24
+  device_swap_max_age_hours:
+    low: 720
+    medium: 240
+    high: 72
+
+# --- Verdict rules ---------------------------------------------------------
+# Evaluated in order; the most severe outcome wins. Each rule carries a stable
+# reason code that partners can build their own logic on.
+verdicts:
+  deny:
+    - mandate_not_active            # revoked, expired, or unknown mandate
+    - amount_exceeds_mandate_limit
+    - beneficiary_not_permitted
+    - identity_mismatch             # KYC Match says the claimed identity is wrong
+    - number_recycled               # the subscriber behind the number changed
+    - sim_swap_recent_high_value    # the classic takeover pattern
+  step_up:
+    - new_beneficiary_material_value  # first payment to this beneficiary, real money
+    - sim_swap_recent_low_value
+    - device_swap_recent
+    - call_forwarding_active        # possible OTP/voice interception
+    - principal_challenge_only
+    - number_not_verified
+    - device_unreachable
+    - location_inconsistent
+    - insufficient_evidence         # floor not satisfied: cannot decide safely
+
+# Amounts at or above this, combined with a recent SIM swap, are denied rather
+# than challenged: the classic account-takeover pattern at material value.
+thresholds:
+  swap_deny_amount: 250
+  location_check_amount: 1000
+  new_beneficiary_step_up_amount: 500   # "material value" for a first payment
+
+# --- Coverage requirements -------------------------------------------------
+# Evidence that must be usable for specific transaction contexts, on top of the
+# per-tier floor. Missing context-required evidence is absence of evidence:
+# the safe answer is challenge, never allow.
+#
+# new_beneficiary_requires_continuity: a brand-new beneficiary gets paid only
+# with proof the number still belongs to its long-term owner (number_recycling
+# usable) — the reassigned-number takeover class, checked exactly when it
+# matters.
+coverage:
+  new_beneficiary_requires_continuity: true

@@ -3,7 +3,6 @@ name = "wakalah-backend"
 version = "0.1.0"
 description = "Wakalah - trust layer for AI-agent transactions (MENA Ignite Hackathon)"
 requires-python = ">=3.12"
-
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
@@ -19,6 +18,7 @@ dependencies = [
 dev = [
     "ruff",
     "mypy",
+    "types-PyYAML",
     "pytest",
     "pytest-asyncio",
 ]
@@ -28,6 +28,8 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, N naming, UP modernize,
+# B bugbear (likely bugs), SIM simplification, RUF ruff-specific
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF"]
 
 [tool.mypy]
@@ -41,10 +43,3 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-include = ["app*"]

@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: wakalah-backend
+Version: 0.1.0
+Summary: Wakalah - trust layer for AI-agent transactions (MENA Ignite Hackathon)
+Requires-Python: >=3.12
+Requires-Dist: fastapi
+Requires-Dist: uvicorn[standard]
+Requires-Dist: pydantic>=2
+Requires-Dist: httpx
+Requires-Dist: python-dotenv
+Requires-Dist: supabase
+Requires-Dist: langgraph
+Requires-Dist: pydantic-ai
+Provides-Extra: dev
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"

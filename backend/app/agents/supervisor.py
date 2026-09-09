@@ -210,7 +210,9 @@ class WakalahSupervisor:
 
     async def _build_plan(self, state: SupervisorState) -> dict[str, Any]:
         started = time.perf_counter()
-        floor = self.policy.floor_signals(state.risk_tier)
+        floor = self.policy.floor_signals(
+            state.risk_tier, beneficiary_is_new=state.tx.beneficiary_is_new
+        )
         result = await self.brains.think(
             instructions=PLAN_INSTRUCTIONS,
             prompt=(
@@ -255,7 +257,9 @@ class WakalahSupervisor:
         """Deterministic node: the agent may add checks, never remove them."""
         assert state.plan is not None
         before = set(state.plan.signals)
-        enforced = self.policy.enforce_plan(state.plan, state.risk_tier)
+        enforced = self.policy.enforce_plan(
+            state.plan, state.risk_tier, beneficiary_is_new=state.tx.beneficiary_is_new
+        )
         added = [s.value for s in enforced.signals if s not in before]
 
         return self._traced(

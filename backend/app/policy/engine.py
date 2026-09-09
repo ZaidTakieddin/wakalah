@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import yaml
 
@@ -36,6 +36,17 @@ from app.models.domain import (
 RULES_DIR = Path(__file__).resolve().parent
 
 TIER_ORDER: dict[RiskTier, int] = {RiskTier.LOW: 0, RiskTier.MEDIUM: 1, RiskTier.HIGH: 2}
+
+
+class FreshnessParams(TypedDict):
+    """Keyword fetch-parameters passed through to NacClient.
+
+    A closed TypedDict (not `dict[str, int]`) so callers can unpack it with
+    `**` next to other keyword arguments without type ambiguity.
+    """
+
+    max_age_hours: int
+    device_swap_max_age_hours: int
 
 
 def _max_tier(*tiers: RiskTier) -> RiskTier:
@@ -91,14 +102,29 @@ class PolicyEngine:
         return _max_tier(agent_tier, self.baseline_tier(tx, mandate))
 
     # ------------------------------------------------------------ plan floors
-    def floor_signals(self, tier: RiskTier, phase: str = "transaction") -> set[Signal]:
-        return {Signal(name) for name in self.rules["floors"][phase][tier.value]}
+    def floor_signals(
+        self, tier: RiskTier, phase: str = "transaction", *, beneficiary_is_new: bool = False
+    ) -> set[Signal]:
+        required = {Signal(name) for name in self.rules["floors"][phase][tier.value]}
+        cfg = self.rules.get("coverage", {})
+        if (
+            beneficiary_is_new
+            and phase == "transaction"
+            and cfg.get("new_beneficiary_requires_continuity")
+        ):
+            required = required | {Signal.NUMBER_RECYCLING}
+        return required
 
     def enforce_plan(
-        self, plan: VerificationPlan, tier: RiskTier, phase: str = "transaction"
+        self,
+        plan: VerificationPlan,
+        tier: RiskTier,
+        phase: str = "transaction",
+        *,
+        beneficiary_is_new: bool = False,
     ) -> VerificationPlan:
         """Return the agent's plan with any missing floor signals added back."""
-        required = self.floor_signals(tier, phase)
+        required = self.floor_signals(tier, phase, beneficiary_is_new=beneficiary_is_new)
         chosen = list(dict.fromkeys(plan.signals))
         missing = [s for s in sorted(required, key=lambda s: s.value) if s not in chosen]
         if not missing:
@@ -113,7 +139,7 @@ class PolicyEngine:
             }
         )
 
-    def freshness_params(self, tier: RiskTier) -> dict[str, int]:
+    def freshness_params(self, tier: RiskTier) -> FreshnessParams:
         """Fetch parameters that tighten with risk (a stricter question, not just
         more questions)."""
         fresh = self.rules["freshness"]
@@ -140,8 +166,9 @@ class PolicyEngine:
         outcomes: list[PolicyOutcome] = []
 
         outcomes += self._mandate_rules(tx, mandate, now)
+        outcomes += self._context_rules(tx)
         outcomes += self._evidence_rules(tx, evidence)
-        outcomes += self._coverage_rules(tier, evidence)
+        outcomes += self._coverage_rules(tier, evidence, tx)
 
         verdict = self._most_severe(outcomes)
         verdict, outcomes = self._apply_agent_escalation(verdict, outcomes, agent_proposal)
@@ -195,6 +222,27 @@ class PolicyEngine:
         if allowed and tx.beneficiary_id not in allowed:
             out.append(PolicyOutcome(Verdict.DENY, "BENEFICIARY_NOT_PERMITTED", tx.beneficiary_id))
 
+        return out
+
+    def _context_rules(self, tx: TransactionRequest) -> list[PolicyOutcome]:
+        """v2: transaction-context friction that needs no network evidence.
+
+        A first-ever payment to a beneficiary at material size is stepped up
+        regardless of the agent's read. This is a business judgment, so it
+        belongs in the deterministic layer — the agent stays free to be more
+        cautious, never less (docs/09 D29).
+        """
+        out: list[PolicyOutcome] = []
+        cfg = self.rules.get("thresholds", {})
+        min_amount = float(cfg.get("new_beneficiary_step_up_amount", float("inf")))
+        if tx.beneficiary_is_new and tx.amount >= min_amount:
+            out.append(
+                PolicyOutcome(
+                    Verdict.STEP_UP,
+                    "NEW_BENEFICIARY_MATERIAL_VALUE",
+                    f"first payment to {tx.beneficiary_id} of {tx.amount} {tx.currency}",
+                )
+            )
         return out
 
     def _evidence_rules(
@@ -270,13 +318,21 @@ class PolicyEngine:
 
         return out
 
-    def _coverage_rules(self, tier: RiskTier, evidence: EvidenceBundle) -> list[PolicyOutcome]:
+    def _coverage_rules(
+        self, tier: RiskTier, evidence: EvidenceBundle, tx: TransactionRequest
+    ) -> list[PolicyOutcome]:
         """Refuse to approve on thin evidence.
 
         If the floor could not be satisfied — an operator outage, a rate limit,
         an unsupported market — the safe answer is to challenge, never to allow.
+        v2 adds a context requirement: paying someone NEW also requires usable
+        continuity proof (the number was not reassigned), because the
+        reassigned-number takeover targets exactly this situation.
         """
         required = self.floor_signals(tier)
+        cfg = self.rules.get("coverage", {})
+        if tx.beneficiary_is_new and cfg.get("new_beneficiary_requires_continuity"):
+            required = required | {Signal.NUMBER_RECYCLING}
         missing = sorted(required - evidence.usable_signals(), key=lambda s: s.value)
         if not missing:
             return []

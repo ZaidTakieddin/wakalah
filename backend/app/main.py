@@ -55,7 +55,7 @@ DEMO_MANDATE_ID = "man_amina_001"
 NO_MANDATE_YET = "No mandate yet — run the 'mandate' beat first"
 
 _nac: NacClient | None = None
-_policy = PolicyEngine()
+_policy = PolicyEngine("v2")
 
 
 @contextlib.asynccontextmanager
@@ -117,8 +117,8 @@ async def health() -> dict[str, Any]:
         "policy_version": _policy.version,
         "brains_configured": router.configured(),
         "audit_backend": audit.backend,
-        "mandates": len(memory.mandates.list()),
-        "decisions": len(memory.decisions.list()),
+        "mandates": len(memory.mandates.list_all()),
+        "decisions": len(memory.decisions.list_all()),
         "ws_subscribers": bus.subscriber_count,
     }
 
@@ -179,7 +179,7 @@ async def create_mandate(request: CreateMandateRequest) -> MandateResponse:
 
 @app.get("/v1/mandates", response_model=list[MandateResponse])
 async def list_mandates() -> list[MandateResponse]:
-    return [_mandate_response(m) for m in memory.mandates.list()]
+    return [_mandate_response(m) for m in memory.mandates.list_all()]
 
 
 @app.post("/v1/mandates/{mandate_id}/revoke", response_model=MandateResponse)
@@ -277,7 +277,14 @@ class _ApiBeatRunner(BeatRunner):
                 beat_id=beat.id,
                 title=beat.title,
                 ok=True,
-                summary=f"Mandate {mandate.mandate_id} for '{mandate.principal_id}'",
+                summary=(
+                    f"Mandate {mandate.mandate_id} for '{mandate.principal_id}'"
+                    if mandate.principal_id
+                    else (
+                        f"Mandate {mandate.mandate_id} "
+                        "(operator identity unavailable in replay mode)"
+                    )
+                ),
                 detail={
                     "mandateId": mandate.mandate_id,
                     "principal": mandate.principal_id,

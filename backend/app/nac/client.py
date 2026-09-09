@@ -36,6 +36,7 @@ from app.models.domain import (
     EvidenceSource,
     Signal,
 )
+from app.nac.consent import ConsentTokenProvider
 from app.nac.endpoints import KYC_FILL_IN_PATH, SPECS
 
 CallHook = Callable[[dict[str, Any]], None]
@@ -66,6 +67,7 @@ class NacClient:
         record: bool | None = None,
         on_call: CallHook | None = None,
         replay_dir: Path | None = None,
+        consent: ConsentTokenProvider | None = None,
     ) -> None:
         self.mode = (mode or settings.nac_mode).lower()
         self.record = settings.nac_record if record is None else record
@@ -74,12 +76,22 @@ class NacClient:
         self.replay_dir.mkdir(parents=True, exist_ok=True)
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
         self._http: httpx.AsyncClient | None = None
+        self.consent = consent or ConsentTokenProvider()
+        self._ttl_cache: dict[tuple[str, str], tuple[float, EvidenceRecord]] = {}
+        """(signal, msisdn, params-hash) -> (expiry, record). Only usable LIVE
+        evidence is cached; a reused answer is relabelled `cached`, never `live`
+        — the honesty label travels with the data."""
+
+    @property
+    def _cache_ttl(self) -> float:
+        return settings.nac_cache_ttl_seconds
 
     async def aclose(self) -> None:
         """Close the shared connection pool."""
         if self._http is not None:
             await self._http.aclose()
             self._http = None
+        await self.consent.aclose()
 
     async def __aenter__(self) -> NacClient:
         return self
@@ -107,23 +119,37 @@ class NacClient:
         spec = SPECS[signal]
         body = spec.build_body(msisdn, params)
 
-        if spec.needs_bearer and not access_token:
-            return self._unavailable(
-                signal,
-                msisdn,
-                code="CONSENT_TOKEN_REQUIRED",
-                message=(
-                    "Number Verification needs a 3-legged consent token; run the "
-                    "operator consent flow first."
-                ),
-            )
+        if self.mode == "live":
+            cached = self._cache_get(signal, msisdn, body)
+            if cached is not None:
+                return cached
+
+        token = access_token
+        if spec.needs_bearer:
+            if not token and self.mode == "live":
+                # Mint the 3-legged consent token on the fly (docs/02 D23 recipe).
+                token = await self.consent.token_for(msisdn)
+            if not token:
+                message = (
+                    "Number Verification needs a 3-legged consent token; the "
+                    "consent flow is unavailable right now."
+                    if self.mode == "live"
+                    else "Number Verification needs a 3-legged consent token; "
+                    "run the operator consent flow first."
+                )
+                return self._unavailable(
+                    signal,
+                    msisdn,
+                    code="CONSENT_TOKEN_REQUIRED",
+                    message=message,
+                )
 
         if self.mode == "replay":
             return self._from_replay(signal, msisdn, body)
 
         headers = dict(settings.nac_headers)
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
         url = settings.nac_base_url + spec.path
 
         started = time.perf_counter()
@@ -158,7 +184,7 @@ class NacClient:
         if self.record:
             self._write_replay(signal, msisdn, raw)
 
-        return EvidenceRecord(
+        record = EvidenceRecord(
             signal=signal,
             dimension=SIGNAL_DIMENSION[signal],
             subject={"phoneNumber": msisdn},
@@ -171,6 +197,8 @@ class NacClient:
                 else ConsentStatus.NOT_REQUIRED_AT_RUNTIME
             ),
         )
+        self._cache_put(signal, msisdn, body, record)
+        return record
 
     async def fetch_identity(self, msisdn: str) -> dict[str, Any] | None:
         """Operator-held registration data for a number (CAMARA KYC Fill-in).
@@ -237,6 +265,35 @@ class NacClient:
         return bundle
 
     # ----------------------------------------------------------------- internals
+    @staticmethod
+    def _cache_key(signal: Signal, msisdn: str, body: dict[str, Any]) -> tuple[str, str]:
+        # The request body is part of the key: "swapped in 24h" and
+        # "swapped in 720h" are different questions, not different labels.
+        return (signal.value, f"{msisdn}|{json.dumps(body, sort_keys=True)}")
+
+    def _cache_get(
+        self, signal: Signal, msisdn: str, body: dict[str, Any]
+    ) -> EvidenceRecord | None:
+        if self._cache_ttl <= 0:
+            return None
+        entry = self._ttl_cache.get(self._cache_key(signal, msisdn, body))
+        if entry is None:
+            return None
+        expires_at, record = entry
+        if time.monotonic() >= expires_at:
+            del self._ttl_cache[self._cache_key(signal, msisdn, body)]
+            return None
+        return record.model_copy(update={"source": EvidenceSource.CACHED})
+
+    def _cache_put(
+        self, signal: Signal, msisdn: str, body: dict[str, Any], record: EvidenceRecord
+    ) -> None:
+        if self._cache_ttl <= 0 or not record.is_usable:
+            # A failed call is never cached: an outage must not look like data.
+            return
+        key = self._cache_key(signal, msisdn, body)
+        self._ttl_cache[key] = (time.monotonic() + self._cache_ttl, record)
+
     @staticmethod
     def _parse(response: httpx.Response) -> Any:
         try:
