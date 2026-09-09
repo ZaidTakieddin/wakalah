@@ -11,7 +11,12 @@ import type {
   MandateResponse,
 } from "@/lib/types";
 
+<<<<<<< HEAD:frontend/wakalah-balance-demo/actions/wakalah.ts
 const API_BASE =  process.env.WAKALAH_API_BASE;
+=======
+const getApiBase =
+  process.env.WAKALAH_API_BASE ?? "http://127.0.0.1:8000";
+>>>>>>> 6ee524720f6e200593a45154679d860a2e8d6eb0:wakalah-balance-demo/actions/wakalah.ts
 
 async function getErrorMessage(response: Response, fallback: string) {
   try {
