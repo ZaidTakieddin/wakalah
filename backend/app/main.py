@@ -54,6 +54,16 @@ from app.store.audit import audit, principal_ref
 DEMO_MANDATE_ID = "man_amina_001"
 NO_MANDATE_YET = "No mandate yet — run the 'mandate' beat first"
 
+
+def _msisdn_for(mandate_id: str | None) -> str | None:
+    """The number a mandate authorizes — read server-side so beat results can
+    state which persona they ran against without exposing numbers elsewhere."""
+    if mandate_id is None:
+        return None
+    mandate = memory.mandates.get(mandate_id)
+    return mandate.principal_msisdn if mandate is not None else None
+
+
 _nac: NacClient | None = None
 _policy = PolicyEngine("v2")
 
@@ -292,6 +302,7 @@ class _ApiBeatRunner(BeatRunner):
                     "mandateId": mandate.mandate_id,
                     "principal": mandate.principal_id,
                     "amountLimit": mandate.amount_limit,
+                    "msisdn": beat.payload["principalMsisdn"],
                 },
             )
 
@@ -306,7 +317,11 @@ class _ApiBeatRunner(BeatRunner):
                 title=beat.title,
                 ok=mandate.status == MandateStatus.REVOKED.value,
                 summary=f"Mandate {mandate.mandate_id} revoked ({beat.payload.get('reason')})",
-                detail={"mandateId": mandate.mandate_id, "status": mandate.status},
+                detail={
+                    "mandateId": mandate.mandate_id,
+                    "status": mandate.status,
+                    "msisdn": _msisdn_for(engine.mandate_id),
+                },
             )
 
         # transaction beats
@@ -346,6 +361,7 @@ class _ApiBeatRunner(BeatRunner):
                 "agentProposal": decision.agent_proposal,
                 "policyOverrodeAgent": decision.policy_overrode_agent,
                 "signals": list(decision.evidence_summary),
+                "msisdn": _msisdn_for(mandate_id),
             },
         )
 

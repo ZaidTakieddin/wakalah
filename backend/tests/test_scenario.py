@@ -15,7 +15,12 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from app.scenario.script import SCRIPT
+from app.scenario.script import (
+    CLEAN_MSISDN,
+    COMPROMISED_MSISDN,
+    SCRIPT,
+    UNAVAILABLE_MSISDN,
+)
 from tests.conftest import capture_events, fresh_state, normalize_events
 
 
@@ -93,6 +98,20 @@ def test_network_calls_carry_their_evaluation_id(offline_app: Any) -> None:
         # demo_tx_degraded excluded by design: the replay cache holds no files
         # for the error persona, and a cache miss emits nothing at all.
     }
+
+
+def test_beats_report_the_number_they_used(offline_app: Any) -> None:
+    """Every beat result states its persona — the UI never has to track which
+    number a beat ran against on its own."""
+    _, by_id = _run_all(offline_app)
+
+    assert by_id["mandate"]["detail"]["msisdn"] == CLEAN_MSISDN
+    assert by_id["routine"]["detail"]["msisdn"] == CLEAN_MSISDN
+    assert by_id["stepup"]["detail"]["msisdn"] == CLEAN_MSISDN
+    assert by_id["out_of_scope"]["detail"]["msisdn"] == CLEAN_MSISDN
+    assert by_id["hijack_event"]["detail"]["msisdn"] == CLEAN_MSISDN
+    assert by_id["cloned_agent"]["detail"]["msisdn"] == COMPROMISED_MSISDN
+    assert by_id["degraded"]["detail"]["msisdn"] == UNAVAILABLE_MSISDN
 
 
 def test_reset_clears_the_stage(offline_app: Any) -> None:
