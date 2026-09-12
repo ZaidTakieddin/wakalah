@@ -12,10 +12,10 @@
 ```
 Check it: <http://127.0.0.1:8000/health> · interactive API docs: <http://127.0.0.1:8000/docs>
 
-**Terminal 2 — frontend.** The demo app lives on branch `yasser`, in `wakalah-balance-demo/` (Next.js + React 19 + Tailwind 4):
+**Terminal 2 — frontend.** The demo app lives on branch `frontend`, in `frontend/wakalah-balance-demo/` (Next.js + React 19 + Tailwind 4):
 ```
-git switch yasser           # or merge it into main first
-cd wakalah-balance-demo
+git switch frontend
+cd frontend/wakalah-balance-demo
 npm install
 npm run dev                 # .env.local: WAKALAH_API_BASE=http://127.0.0.1:8000
 ```

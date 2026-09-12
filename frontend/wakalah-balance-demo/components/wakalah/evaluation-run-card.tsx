@@ -1,6 +1,9 @@
 import { Loader2 } from "lucide-react";
+import { DecisionPipeline } from "@/components/scenario/decision-pipeline";
+import { VerdictCard } from "@/components/scenario/verdict-card";
+import { EvidenceGrid } from "@/components/wakalah/evidence-grid";
 import { StreamEvent } from "@/components/wakalah/stream-event";
-import type { Decision, EvaluationRun } from "@/lib/types";
+import type { EvaluationRun } from "@/lib/types";
 
 type EvaluationRunCardProps = {
   run: EvaluationRun;
@@ -13,18 +16,6 @@ const amount = new Intl.NumberFormat("en-US", {
   currency: "USD",
   minimumFractionDigits: 2,
 });
-
-const decisionStyles: Record<Decision, string> = {
-  allow: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  challenge: "border-amber-200 bg-amber-50 text-amber-800",
-  deny: "border-red-200 bg-red-50 text-red-800",
-};
-
-const decisionMessages: Record<Decision, string> = {
-  allow: "The policy approved this transfer.",
-  challenge: "Additional verification is required before money can move.",
-  deny: "The policy blocked this transfer.",
-};
 
 // Chip styling for the collapsed header. Keys are "running" / "failed" plus
 // the three Decision values, so both in-flight and terminal states get a
@@ -112,9 +103,12 @@ export function EvaluationRunCard({
           </div>
 
           <div className="space-y-2.5">
-            {visibleEvents.map((event, index) => (
-              <StreamEvent key={`${event.ts}-${event.type}-${index}`} event={event} />
-            ))}
+            <DecisionPipeline events={run.events} />
+            {visibleEvents
+              .filter((event) => event.type !== "agent.trace")
+              .map((event, index) => (
+                <StreamEvent key={`${event.ts}-${event.type}-${index}`} event={event} />
+              ))}
 
             {run.status === "running" && visibleEvents.length === 0 && (
               <div className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
@@ -129,32 +123,9 @@ export function EvaluationRunCard({
               </div>
             )}
 
-            {run.decision && (
-              <div
-                className={`rounded-2xl border p-4 ${decisionStyles[run.decision.decision]}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] opacity-70">
-                      Final policy decision
-                    </p>
-                    <p className="mt-1 text-xl font-black uppercase tracking-tight">
-                      {run.decision.decision}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold uppercase">
-                    {run.decision.riskTier} risk
-                  </span>
-                </div>
-                <p className="mt-2 text-xs leading-5 opacity-90">
-                  {decisionMessages[run.decision.decision]}
-                </p>
-                {run.decision.policyOverrodeAgent && (
-                  <p className="mt-2 border-t border-current/10 pt-2 text-[11px] font-bold">
-                    Policy overrode the AI recommendation.
-                  </p>
-                )}
-              </div>
+            <VerdictCard decision={run.decision} />
+            {run.decision && Object.keys(run.decision.evidenceSummary ?? {}).length > 0 && (
+              <EvidenceGrid evidenceSummary={run.decision.evidenceSummary ?? {}} />
             )}
           </div>
         </div>

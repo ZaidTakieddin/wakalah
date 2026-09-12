@@ -22,6 +22,32 @@ async function getErrorMessage(response: Response, fallback: string) {
   }
 }
 
+export type BackendHealth = {
+  status: string;
+  nac_mode: string;
+  policy_version: string;
+  brains_configured: string[];
+  audit_backend: string;
+};
+
+export async function getHealth(): Promise<
+  | { ok: true; data: BackendHealth }
+  | { ok: false; error: string }
+> {
+  try {
+    const response = await fetch(`${API_BASE}/health`, { cache: "no-store" });
+    if (!response.ok) {
+      return { ok: false, error: `Backend answered ${response.status}` };
+    }
+    return { ok: true, data: (await response.json()) as BackendHealth };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Backend unreachable.",
+    };
+  }
+}
+
 export async function createMandate(
   phoneNumber: string,
 ): Promise<

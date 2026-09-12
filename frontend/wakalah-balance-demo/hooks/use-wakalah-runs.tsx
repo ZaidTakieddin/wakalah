@@ -31,6 +31,22 @@ type UseWakalahRunsOptions = {
   }) => string;
 };
 
+export type ActiveBeat = {
+  beatId: string;
+  title: string;
+  narration: string;
+  expect: string;
+  labels: string[];
+} | null;
+
+export type RevocationNotice = {
+  kind: "revoked" | "mid_flight";
+  mandateId: string | null;
+  reason: string | null;
+  verdictBefore: string | null;
+  verdictNow: string | null;
+} | null;
+
 export function useWakalahRuns(options: UseWakalahRunsOptions = {}) {
   const { resolveBeneficiaryName, describeAction } = options;
 
@@ -39,27 +55,62 @@ export function useWakalahRuns(options: UseWakalahRunsOptions = {}) {
     null,
   );
   const [mandateStatus, setMandateStatus] = useState<MandateStatus>("idle");
+  const [activeBeat, setActiveBeat] = useState<ActiveBeat>(null);
+  const [revocation, setRevocation] = useState<RevocationNotice>(null);
 
   const pendingBeatTitleRef = useRef<string | null>(null);
   const seenRef = useRef(new Set<string>());
 
   const connectionStatus = useWakalahStream((event: WsEvent) => {
+    if (event.type === "scenario.reset") {
+      setActiveBeat(null);
+      setRevocation(null);
+      return;
+    }
+
     if (event.type === "scenario.beat.started") {
       const payload = asRecord(event.payload);
       pendingBeatTitleRef.current =
         typeof payload.title === "string" ? payload.title : null;
+      setActiveBeat({
+        beatId: typeof payload.beatId === "string" ? payload.beatId : "",
+        title: typeof payload.title === "string" ? payload.title : "",
+        narration: typeof payload.narration === "string" ? payload.narration : "",
+        expect: typeof payload.expect === "string" ? payload.expect : "",
+        labels: Array.isArray(payload.labels)
+          ? payload.labels.filter((l): l is string => typeof l === "string")
+          : [],
+      });
       return;
     }
 
     if (event.type === "mandate.updated") {
       const payload = asRecord(event.payload);
       setMandateStatus(payload.status === "active" ? "success" : "error");
-    
     }
 
     if (event.type === "mandate.revoked") {
+      const payload = asRecord(event.payload);
       setMandateStatus("idle");
-  
+      setRevocation({
+        kind: "revoked",
+        mandateId: typeof payload.mandateId === "string" ? payload.mandateId : null,
+        reason: typeof payload.reason === "string" ? payload.reason : null,
+        verdictBefore: null,
+        verdictNow: null,
+      });
+    }
+
+    if (event.type === "mandate.changed_mid_flight") {
+      const payload = asRecord(event.payload);
+      setRevocation({
+        kind: "mid_flight",
+        mandateId: null,
+        reason: null,
+        verdictBefore:
+          typeof payload.verdictBefore === "string" ? payload.verdictBefore : null,
+        verdictNow: typeof payload.verdictNow === "string" ? payload.verdictNow : null,
+      });
     }
 
     const transactionId = getEventTransactionId(event);
@@ -180,5 +231,7 @@ export function useWakalahRuns(options: UseWakalahRunsOptions = {}) {
     mandateStatus,
     setMandateStatus,
     markRunFailed,
+    activeBeat,
+    revocation,
   };
 }
