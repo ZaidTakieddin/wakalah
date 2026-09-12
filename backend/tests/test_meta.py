@@ -24,8 +24,6 @@ def test_meta_enums_match_the_source(offline_app: Any) -> None:
     assert body["policyVersion"] == "v2"
     assert body["enums"]["signal"] == [s.value for s in Signal]
     assert body["enums"]["mandateStatus"] == ["active", "revoked", "expired", "challenge_only"]
-    assert body["signalDimension"] == {
-        s.value: SIGNAL_DIMENSION[s].value for s in Signal
-    }
+    assert body["signalDimension"] == {s.value: SIGNAL_DIMENSION[s].value for s in Signal}
     assert "new_beneficiary_material_value" in body["reasonCodes"]["step_up"]
     assert "sim_swap_recent_high_value" in body["reasonCodes"]["deny"]
