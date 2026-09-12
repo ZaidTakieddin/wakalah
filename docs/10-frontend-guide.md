@@ -177,6 +177,7 @@ Creates the authorization ("wakalah contract"). Leave `principalName` out and th
 | `POST /v1/mandates/{id}/revoke?reason=sim_swap_detected` | fire the Sentinel revocation |
 | `GET /v1/principals/{msisdn}/history` | audit trail for one principal |
 | `GET /v1/scenario` | the demo script + progress |
+| `GET /v1/meta/enums` | **all enum values + reason codes + signal→dimension map, generated from source — fetch once on load and build chips/labels from this instead of hardcoding** |
 | `POST /v1/scenario/beats/{beatId}` | run one beat — **the presenter's remote** |
 | `POST /v1/scenario/run-all` | rehearsal |
 | `POST /v1/scenario/reset` | start the story over |

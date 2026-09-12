@@ -38,10 +38,17 @@ from app.api.schemas import (
 from app.config import settings
 from app.events import bus, transaction_scope
 from app.models.domain import (
+    SIGNAL_DIMENSION,
+    ConsentStatus,
+    EvidenceSource,
     Mandate,
     MandateScope,
     MandateStatus,
+    RiskTier,
+    Signal,
     TransactionRequest,
+    TrustDimension,
+    Verdict,
     utc_now,
 )
 from app.nac.client import NacClient
@@ -130,6 +137,27 @@ async def health() -> dict[str, Any]:
         "mandates": len(memory.mandates.list_all()),
         "decisions": len(memory.decisions.list_all()),
         "ws_subscribers": bus.subscriber_count,
+    }
+
+
+@app.get("/v1/meta/enums")
+async def meta_enums() -> dict[str, Any]:
+    """Reference data for frontends: every enum value plus the active policy's
+    reason codes and signal dimensions, generated from the source — UI labels
+    built on this can never drift from the backend."""
+    return {
+        "policyVersion": _policy.version,
+        "enums": {
+            "signal": [s.value for s in Signal],
+            "trustDimension": [d.value for d in TrustDimension],
+            "riskTier": [t.value for t in RiskTier],
+            "verdict": [v.value for v in Verdict],
+            "evidenceSource": [s.value for s in EvidenceSource],
+            "consentStatus": [s.value for s in ConsentStatus],
+            "mandateStatus": [s.value for s in MandateStatus],
+        },
+        "signalDimension": {s.value: SIGNAL_DIMENSION[s].value for s in Signal},
+        "reasonCodes": _policy.rules["verdicts"],
     }
 
 
