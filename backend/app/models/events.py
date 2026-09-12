@@ -71,8 +71,13 @@ class TransactionStarted(EventPayload):
     transaction_id: str
     amount: float
     currency: str
+    beneficiary_id: str = ""
+    """Who is being paid — the panel's request strip."""
     beneficiary_is_new: bool = False
     principal: str = ""
+    msisdn: str = ""
+    """The number under verification — presenter-facing stream only; the
+    partner API and audit tables stay hashed."""
     beat_id: str | None = None
     """Which scenario beat was running — attached by the bus when known."""
 

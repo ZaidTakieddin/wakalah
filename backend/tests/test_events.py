@@ -58,6 +58,26 @@ def test_agent_trace_carries_transaction_and_latency_in_camel_case() -> None:
     assert payload["degraded"] is True
 
 
+def test_transaction_started_names_number_and_beneficiary() -> None:
+    """The panel-opening event carries the request's identifying facts, so the
+    UI never has to squeeze a principal name into a phone slot."""
+    payload = encode_payload(
+        "transaction.started",
+        {
+            "transactionId": "tx_1",
+            "amount": 1500,
+            "currency": "QAR",
+            "beneficiaryId": "ben_landlord",
+            "beneficiaryIsNew": True,
+            "principal": "",
+            "msisdn": "+99999991001",
+        },
+    )
+
+    assert payload["beneficiaryId"] == "ben_landlord"
+    assert payload["msisdn"] == "+99999991001"
+
+
 def test_scenario_beat_finished_reports_beat_id_camel_case() -> None:
     payload = encode_payload(
         "scenario.beat.finished",

@@ -245,8 +245,10 @@ async def evaluate_transaction(request: EvaluateRequest) -> EvaluateResponse:
                 "transactionId": tx.transaction_id,
                 "amount": tx.amount,
                 "currency": tx.currency,
+                "beneficiaryId": tx.beneficiary_id,
                 "beneficiaryIsNew": tx.beneficiary_is_new,
                 "principal": mandate.principal_id,
+                "msisdn": mandate.principal_msisdn,
             },
         )
 
