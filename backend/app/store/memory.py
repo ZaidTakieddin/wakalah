@@ -8,6 +8,7 @@ database at all, which is one less thing to fail on stage.
 from __future__ import annotations
 
 import itertools
+import secrets
 
 from app.models.domain import Decision, Mandate, MandateStatus
 
@@ -15,7 +16,10 @@ _counter = itertools.count(1)
 
 
 def next_id(prefix: str) -> str:
-    return f"{prefix}_{next(_counter):04d}"
+    """Readable, ordered, and unpredictable: the counter keeps ids debuggable,
+    the random suffix keeps them unguessable — a mandate id is the bearer
+    credential on evaluate, so sequential ids would be enumerable."""
+    return f"{prefix}_{next(_counter):04d}_{secrets.token_hex(4)}"
 
 
 class MandateStore:

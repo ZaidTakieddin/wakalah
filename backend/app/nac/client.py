@@ -48,6 +48,10 @@ MAX_CONCURRENT_CALLS = 3
 the first live run. A plan of six signals must never fail in front of judges,
 so calls are throttled and retried rather than fired all at once."""
 
+MAX_CACHE_ENTRIES = 512
+"""Upper bound on TTL-cached responses. dicts preserve insertion order, so the
+oldest entry is evicted first; expiry is still enforced per entry on read."""
+
 RETRY_STATUSES = frozenset({429, 502, 503, 504})
 MAX_ATTEMPTS = 3
 BACKOFF_BASE_SECONDS = 0.6
@@ -294,6 +298,9 @@ class NacClient:
             # A failed call is never cached: an outage must not look like data.
             return
         key = self._cache_key(signal, msisdn, body)
+        self._ttl_cache.pop(key, None)
+        while len(self._ttl_cache) >= MAX_CACHE_ENTRIES:
+            self._ttl_cache.pop(next(iter(self._ttl_cache)))
         self._ttl_cache[key] = (time.monotonic() + self._cache_ttl, record)
 
     @staticmethod

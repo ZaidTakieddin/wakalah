@@ -110,7 +110,7 @@ VOLATILE_EVENT_KEYS = frozenset(
 """Fields that legitimately differ between two identical runs (timings) plus
 auto-incremented identifiers, normalized away before comparing sequences."""
 
-MANDATE_ID_RE = re.compile(r"man_\d+")
+MANDATE_ID_RE = re.compile(r"man_\d+_[0-9a-f]+")
 
 
 def scrub_volatile(node: Any) -> Any:

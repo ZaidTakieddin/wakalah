@@ -352,3 +352,23 @@ def test_different_questions_are_different_cache_entries(
     asyncio.run(run())
 
     assert len(seen) == 2
+
+
+def test_cache_is_bounded_oldest_evicted_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cache must not grow without bound on a long-lived server."""
+    monkeypatch.setattr(settings, "nac_cache_ttl_seconds", 600.0)
+    monkeypatch.setattr(client_module, "MAX_CACHE_ENTRIES", 8)
+    handler, seen = counting_handler([httpx.Response(200, json={"swapped": False})])
+    client = make_client(handler, replay_dir=tmp_path)
+
+    async def run() -> None:
+        async with client:
+            for i in range(12):
+                await client.fetch(Signal.SIM_SWAP, f"+1000000{i:04d}")
+
+    asyncio.run(run())
+
+    assert len(seen) == 12
+    assert len(client._ttl_cache) <= 8
