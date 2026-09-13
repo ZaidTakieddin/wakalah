@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createMandate, evaluateTransaction } from "@/actions/wakalah";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { TransferForm } from "@/components/dashboard/transfer-form";
@@ -13,7 +13,6 @@ import {
   recipientIdFromName,
 } from "@/lib/demo-data";
 import type { MandateResponse, TransferRecord } from "@/lib/types";
-import { revokeActiveMandates } from "@/lib/revoke-active-mandates";
 import { useWakalahRuns } from "@/hooks/use-wakalah-runs";
 
 export default function Home() {
@@ -101,10 +100,6 @@ export default function Home() {
     ],
     [runs],
   );
-
-  useEffect(() => {
-    void revokeActiveMandates("page_load_reset");
-  }, []);
 
   async function activatePhone(nextPhoneNumber: string) {
     setPhoneNumber(nextPhoneNumber);

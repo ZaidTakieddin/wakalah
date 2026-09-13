@@ -60,6 +60,17 @@ export function useWakalahRuns(options: UseWakalahRunsOptions = {}) {
 
   const pendingBeatTitleRef = useRef<string | null>(null);
   const seenRef = useRef(new Set<string>());
+  // The socket replays history on every connect: only a revocation newer
+  // than this page counts as the dramatic moment (10s tolerance covers clock
+  // skew plus an accidental instant refresh). Older replays still update the
+  // mandate status below — state, not theatre.
+  const [mountedAt] = useState(() => Date.now());
+  const RECENCY_TOLERANCE_MS = 10_000;
+
+  function isFreshEvent(event: WsEvent): boolean {
+    const at = Date.parse(event.ts);
+    return !Number.isNaN(at) && at >= mountedAt - RECENCY_TOLERANCE_MS;
+  }
 
   const connectionStatus = useWakalahStream((event: WsEvent) => {
     if (event.type === "scenario.reset") {
@@ -92,6 +103,7 @@ export function useWakalahRuns(options: UseWakalahRunsOptions = {}) {
     if (event.type === "mandate.revoked") {
       const payload = asRecord(event.payload);
       setMandateStatus("idle");
+      if (!isFreshEvent(event)) return;
       setRevocation({
         kind: "revoked",
         mandateId: typeof payload.mandateId === "string" ? payload.mandateId : null,

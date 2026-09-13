@@ -25,9 +25,12 @@ export function ScenarioRunner() {
     if (initRef.current) return;
     initRef.current = true;
 
+    // No destructive calls here: opening the page must never mutate server
+    // state (an earlier version revoked every active mandate on load, which
+    // also fired the revocation banner on every visit). Explicit Reset below
+    // is the only wipe.
     (async () => {
       try {
-        await revokeActiveMandates("page_load_reset");
         setScenario(await getScenario());
       } finally {
         setLoading(false);
