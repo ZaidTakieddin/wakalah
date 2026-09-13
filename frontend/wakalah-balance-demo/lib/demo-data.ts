@@ -57,6 +57,19 @@ export function recipientIdFromName(name: string) {
 }
 
 export const AUTHORIZED_BENEFICIARY_IDS = [
-  "yasser",
-  "zain",
+  "hessa-al-mansoori",
+  "doha-properties",
+  "lina-pharmacy",
+  // Permitted but never paid: typing this name stages the step-up path
+  // (first material payment to a new beneficiary always challenges).
+  "omar-cafe",
 ];
+
+/** What each home-page transfer demonstrates. Kept next to the data so the
+ *  presenter never has to guess. */
+export const DEMO_SCRIPT_HINTS = [
+  "500 to Hessa Al-Mansoori → ALLOW",
+  "1,500 to Omar Cafe (new) → CHALLENGE",
+  "5,000 anywhere → DENY (over the limit)",
+  "Any other name → DENY (outside the mandate)",
+] as const;

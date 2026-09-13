@@ -81,6 +81,10 @@ export function VerdictCard({ decision }: { decision: EvaluateResponse | null })
       {decision.latencyMs !== null && (
         <p className="mt-3 text-[11px] text-slate-400">Decided in {(decision.latencyMs / 1000).toFixed(1)}s</p>
       )}
+
+      <p className="mt-2 border-t border-current/10 pt-2 text-[10px] font-semibold uppercase tracking-wide opacity-60">
+        policy {decision.policyVersion} · audited
+      </p>
     </div>
   );
 }

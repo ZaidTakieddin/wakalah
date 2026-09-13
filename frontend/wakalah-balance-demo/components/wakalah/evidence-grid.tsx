@@ -54,14 +54,26 @@ export function EvidenceGrid({
 
   return (
     <div className="space-y-2.5">
-      {DIMENSION_ORDER.filter((dimension) => byDimension.has(dimension)).map(
-        (dimension) => (
+      {DIMENSION_ORDER.filter((dimension) => byDimension.has(dimension)).map((dimension) => {
+        const signals = byDimension.get(dimension) ?? [];
+        const findings = signals.filter(
+          (name) => {
+            const evidence = evidenceSummary[name];
+            return evidence !== undefined && signalState(evidence) === "risk";
+          },
+        ).length;
+        return (
           <div key={dimension} className="rounded-2xl border border-slate-200 bg-white p-3">
             <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
               {DIMENSION_LABELS[dimension]}
+              {findings > 0 ? (
+                <span className="ml-2 text-red-600">⚠ {findings} finding{findings === 1 ? "" : "s"}</span>
+              ) : (
+                <span className="ml-2 text-emerald-600">✓ clear</span>
+              )}
             </p>
             <div className="mt-2 space-y-1.5">
-              {(byDimension.get(dimension) ?? []).map((name) => {
+              {signals.map((name) => {
                 const evidence = evidenceSummary[name];
                 if (!evidence) return null;
                 const state = signalState(evidence);
@@ -86,8 +98,8 @@ export function EvidenceGrid({
               })}
             </div>
           </div>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { DEMO_AGENT, MANDATE_LIMIT } from "@/lib/demo-data";
+import { DEMO_AGENT, DEMO_SCRIPT_HINTS, MANDATE_LIMIT } from "@/lib/demo-data";
 import type { MandateStatus } from "@/lib/types";
 
 type TransferFormProps = {
@@ -130,6 +130,17 @@ export function TransferForm({
           <span className="text-xs text-slate-500">
             Used by WAKALAH for risk classification
           </span>
+        </div>
+
+        <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+            Demo script
+          </p>
+          <ul className="mt-1.5 space-y-1 text-xs text-slate-600">
+            {DEMO_SCRIPT_HINTS.map((hint) => (
+              <li key={hint}>• {hint}</li>
+            ))}
+          </ul>
         </div>
 
         {!isReady ? (

@@ -229,12 +229,12 @@ On connect you receive a **replay of recent events** so a refresh mid-demo doesn
 
 | `step` | `summary` example | Meaning |
 |---|---|---|
-| `classify_risk` | "Risk classified HIGH" | AI · `detail.agentTier` vs `detail.policyBaseline` |
+| `classify_risk` | "Risk classified HIGH" | AI · `detail.agent_tier` vs `detail.policy_baseline` |
 | `build_plan` | "Agent planned 5 checks" | AI · `detail.signals[]`, `detail.rationale` |
-| `enforce_floor` | "Policy floor added 2 check(s)" | **POLICY** · `detail.addedByPolicy[]`, `detail.finalPlan[]` |
-| `gather_evidence` | "7/7 signals returned" | tools · `detail.results`, `detail.dimensionsCovered[]` |
+| `enforce_floor` | "Policy floor added 2 check(s)" | **POLICY** · `detail.added_by_policy[]`, `detail.final_plan[]` |
+| `gather_evidence` | "7/7 signals returned" | tools · `detail.results`, `detail.dimensions_covered[]` |
 | `interpret` | "Agent proposes STEP_UP" | AI · `detail.rationale`, `detail.concerns[]` |
-| `decide` | "POLICY DENY (overrode agent STEP_UP)" | **POLICY** · `detail.policyOverrodeAgent` |
+| `decide` | "POLICY DENY (overrode agent STEP_UP)" | **POLICY** · `detail.policy_overrode_agent` |
 
 **Colour AI steps and POLICY steps differently.** That visual split is the architecture argument — the audience should see reasoning and authority alternate.
 
@@ -382,12 +382,14 @@ Six fixed nodes, filled in by `agent.trace` events in order:
 
 | Node | `step` | Headline value | Sub-label |
 |---|---|---|---|
-| 🧠 CLASSIFY | `classify_risk` | `detail.agentTier` uppercased | `brain` |
+| 🧠 CLASSIFY | `classify_risk` | `detail.agent_tier` uppercased | `brain` |
 | 🧠 PLAN | `build_plan` | `detail.signals.length` + " checks" | `brain` |
 | ⚖ FLOOR | `enforce_floor` | `+N added` or `met` | `policy` |
 | 🔌 GATHER | `gather_evidence` | `usable/total` | `latencyMs` |
 | 🧠 INTERP | `interpret` | proposed verdict | `brain` |
 | ⚖ DECIDE | `decide` | final verdict | `policy` |
+
+> Wire honesty note: top-level event fields are camelCase, but the `detail` object carries the supervisor's native snake_case keys (`agent_tier`, `added_by_policy`, `dimensions_covered`, `policy_overrode_agent`, …). Read them as-is — don't camelCase them.
 
 Rules that carry the architecture:
 
