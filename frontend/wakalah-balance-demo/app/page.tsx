@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/dashboard/app-header";
 import { TransferForm } from "@/components/dashboard/transfer-form";
 import { TransferHistory } from "@/components/dashboard/transfer-history";
 import { TransferLivePanel } from "@/components/wakalah/transfer-live-panel";
+import { LiveCallsLog } from "@/components/wakalah/live-calls-log";
 import {
   DEFAULT_PERSONA,
   INITIAL_TRANSFERS,
@@ -166,8 +167,9 @@ export default function Home() {
     <main className="min-h-screen bg-[#f5f7fb] text-slate-950">
       <AppHeader />
 
-      <div className="mx-auto grid max-w-385 gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_460px]">
-        <div className="min-w-0 space-y-5">
+      <div className="mx-auto max-w-385 space-y-5 p-4 sm:p-5">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_460px]">
+          <div className="min-w-0 space-y-5">
           <TransferForm
             recipientName={recipientName}
             recipientOptions={RECIPIENT_NAMES}
@@ -206,6 +208,9 @@ export default function Home() {
             setExpandedRunId((current) => (current === transactionId ? null : transactionId))
           }
         />
+        </div>
+
+        <LiveCallsLog runs={runs} />
       </div>
     </main>
   );

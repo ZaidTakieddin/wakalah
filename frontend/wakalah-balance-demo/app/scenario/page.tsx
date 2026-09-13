@@ -5,7 +5,7 @@ import { useState } from "react";
 import { RecentStrip } from "@/components/scenario/recent-strip";
 import { ScenarioRunner } from "@/components/scenario/scenario-runner";
 import { StatusBar } from "@/components/scenario/status-bar";
-import { LiveCallsLog } from "@/components/scenario/live-calls-log";
+import { LiveCallsLog } from "@/components/wakalah/live-calls-log";
 import { ScenarioLivePanel } from "@/components/wakalah/scenario-live-panel";
 import { useWakalahRuns } from "@/hooks/use-wakalah-runs";
 
@@ -83,9 +83,8 @@ export default function ScenarioPage() {
         <RecentStrip runs={runs} />
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_460px]">
-          <div className="min-w-0 space-y-5">
+          <div className="min-w-0">
             <ScenarioRunner />
-            <LiveCallsLog runs={runs} />
           </div>
 
           <ScenarioLivePanel
@@ -95,6 +94,8 @@ export default function ScenarioPage() {
             onToggleRun={(id) => setExpandedRunId((cur) => (cur === id ? null : id))}
           />
         </div>
+
+        <LiveCallsLog runs={runs} />
       </div>
     </main>
   );
