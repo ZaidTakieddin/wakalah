@@ -1,6 +1,6 @@
 # HackerEarth submission form copy (paste-ready)
 
-*Prepared 14 July 2026. Attach `Wakalah-Idea-Capture.docx` in the file-upload slot — it IS the required Idea Capture Template (Word). The pitch deck + demo screenshots come via resubmission before Aug 23 (last submission counts).*
+*Updated 13 Sep 2026 for the final submission. Attach `Wakalah-Idea-Capture.docx` in the file-upload slot — it IS the required Idea Capture Template (Word).*
 
 ## Title
 
@@ -12,22 +12,31 @@
 
 **Wakalah (وكالة)** — named for the classical Islamic agency contract — is the trust layer for the agent economy: it binds every AI agent to a **verified, present, un-hijacked human principal** using the mobile network's own signals, so banks, PSPs, and remittance providers can safely accept agent-initiated transactions.
 
-**The problem.** AI agents now book, buy, and send money on people's behalf. Every emerging agent-payment scheme authorizes the *agent's credentials* — none can answer the question institutions actually care about: *is this agent still acting for a real, un-hijacked human, right now?* Stolen credentials plus a cloned agent are indistinguishable at the protocol layer. The first victims will be MENA's remittance corridors — the world's largest — where fraud playbooks already begin with a SIM swap and will soon run at machine speed.
+**The problem.** AI agents now book, buy, and send money on people's behalf. Every emerging agent-payment scheme authorizes the *agent's credentials* — none can answer the question institutions actually care about: *is this agent still acting for a real, un-hijacked human, right now?* Stolen credentials plus a cloned agent are indistinguishable at the protocol layer. The first victims will be MENA's remittance corridors — among the world's largest — where fraud playbooks already begin with a SIM swap and will soon run at machine speed.
 
-**The solution.** Wakalah issues signed, expiring, scoped **trust tokens** at mandate creation, re-verifies the hot signals at every transaction, and — the key innovation — **revokes tokens mid-transaction** the moment the network reports a SIM swap. Three AI agents (Mandate Agent, Sentinel Agent, Risk Scorer) orchestrate the CAMARA APIs as real-time data sources; a deterministic policy engine holds final authority over every verdict (AI proposes, policy disposes).
+**The solution.** Wakalah issues scoped, expiring mandates at onboarding, re-verifies the hot signals at every transaction, and — the key innovation — **revokes authorization mid-transaction** the moment the network reports a SIM swap. A LangGraph supervisor classifies risk, plans verification, and proposes a verdict; a deterministic policy engine with per-tier minimum-check floors makes the final ALLOW / STEP-UP / DENY. **AI proposes, policy disposes** — the agent can add friction, never remove it, and every override is shown on screen.
 
 **CAMARA APIs on Nokia Network-as-Code — ten signals across five trust dimensions:**
-- **Binding:** Number Verification (3-legged consent), KYC Match
-- **Hijack:** SIM Swap (+events), Device Swap, Call Forwarding Signal
+- **Binding:** Number Verification (3-legged consent flow, implemented end to end)
+- **Identity:** KYC Match (+ Fill-in at onboarding)
+- **Hijack:** SIM Swap (+ operator events), Device Swap, Call Forwarding Signal
 - **Continuity:** Number Recycling, Tenure
 - **Context:** Device Reachability, Roaming Status, Location Verification
 
-**AI agent layer (Resource & Tooling Guide compliant):** LangGraph orchestration + Pydantic AI typed decisioning, Gemini 2.5 (reasoning) + Groq Llama (checkout-latency checks) with a local Ollama fallback; Supabase Postgres audit trail; all free tiers.
+**AI agent layer (Resource & Tooling Guide compliant):** LangGraph orchestration + Pydantic AI typed proposals, Gemini Flash (reasoning) + Flash-Lite (low-latency tier) with a local Ollama fallback; Supabase Postgres audit trail (hash-pseudonymized, gracefully degrading); all free tiers.
 
-**Not just an idea — the core chain is already proven live.** 18/18 API operations succeed on the NaC sandbox today, including the complete three-legged Number Verification consent flow (`devicePhoneNumberVerified: true`), QoD sessions, geofencing subscriptions, and the full identity suite — evidence logged in our repo (shared at prototype stage).
+**Not just an idea — a working, hosted system.** Backend hardened to 129 offline tests with strict lint/type gates; a deterministic 7-beat demo (clean approval → step-up → scope refusal → SIM-swap revocation → cloned-agent denial → outage challenge) that lands identically on every run; every stream event schema-validated; every signal honesty-labeled live/cached/replay/unavailable. Live demo, public repo, and run instructions below.
 
-**Theme:** 4 — Secure FinTech, Payments & Anti-Fraud Innovation. **Impact:** fraud stopped *before* authorization; false declines cut for genuinely traveling customers; and a new revenue line for operators — every agent transaction generates 2–4 billable verification calls (≈ $40–200 per 1,000 transactions), positioning MENA operators as the paid identity layer of agentic commerce.
+**Theme:** 4 — Secure FinTech, Payments & Anti-Fraud Innovation. **Impact:** fraud stopped *before* authorization; false declines cut for genuinely traveling customers; and a new revenue line for operators — every agent transaction generates billable verification calls, positioning MENA operators as the paid identity layer of agentic commerce.
 
-**Team Wakalah:** Zaid Takieddin (backend & AI agent layer) · Yasser Al-Koudmany (frontend & demo).
+**Team Wakalah:** Zaid Takieddin (backend, agent layer & demo integration) + Yasser Al-Koudmany (frontend console).
 
-*Full Idea Capture Template attached, including architecture diagram. Working prototype, pitch deck, and demo video to follow in our updated submission.*
+## Links (paste into the matching slots)
+
+- **Live demo:** https://wakalah-balance-demo.vercel.app (scenario page drives the 7-beat story; home page takes manual transfers)
+- **Backend API + health:** https://wakalah.onrender.com (try `/health`, interactive docs at `/docs`)
+- **Repository:** https://github.com/ZaidTakieddin/wakalah — NOTE: currently private; grant judge access or flip to public before submitting
+- **Source code:** same repository above (backend/ + frontend/wakalah-balance-demo/)
+- **Presentation (.pdf):** [attach the pitch deck export here]
+- **Demo video URL:** [paste after upload]
+- **Run instructions:** RUNNING.md in the repo root (local run with zero keys in replay mode, or use the hosted links above — no install needed)
