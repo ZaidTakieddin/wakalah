@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2, Play, PlayCircle, RotateCcw } from "lucide-react";
@@ -19,6 +19,7 @@ export function ScenarioRunner() {
   const [busy, setBusy] = useState<Busy>(null);
   const [busyBeatId, setBusyBeatId] = useState<string | null>(null);
   const [expandedBeat, setExpandedBeat] = useState<string | null>(null);
+  const [completedIds, setCompletedIds] = useState<ReadonlySet<string>>(new Set());
   const initRef = useRef(false);
 
   useEffect(() => {
@@ -40,10 +41,17 @@ export function ScenarioRunner() {
 
   const isBusy = busy !== null;
   const beats = scenario?.beats ?? [];
-  const completedBeats = beats.filter((beat) => beat.done).length;
+  // Completion is tracked per page-load, never from the server flags: the
+  // engine remembers every beat ever run, but a reload is a clean slate, so
+  // only beats finished in THIS session tick. The POST resolves after the
+  // beat fully executes server-side, so resolving means done.
+  const isDone = (beatId: string) => completedIds.has(beatId);
+  const completedBeats = beats.filter((beat) => isDone(beat.id)).length;
+  const markDone = (ids: string[]) =>
+    setCompletedIds((current) => new Set([...current, ...ids]));
 
   // Every action below: fire the mutation, THEN fetch fresh scenario state,
-  // THEN clear busy. Not before — the action's own return value may reflect
+  // THEN clear busy. Not before â€” the action's own return value may reflect
   // state before the backend has fully settled (decisions stream in async
   // over the socket), so we don't trust it for what to render.
   async function runBeat(beatId: string) {
@@ -52,6 +60,7 @@ export function ScenarioRunner() {
     setBusyBeatId(beatId);
     try {
       await runScenarioBeat(beatId);
+      markDone([beatId]);
       setScenario(await getScenario());
     } finally {
       setBusy(null);
@@ -64,6 +73,7 @@ export function ScenarioRunner() {
     setBusy("all");
     try {
       await runAllScenarioBeats();
+      markDone(beats.map((beat) => beat.id));
       setScenario(await getScenario());
     } finally {
       setBusy(null);
@@ -76,6 +86,7 @@ export function ScenarioRunner() {
     try {
       await revokeActiveMandates("scenario_reset");
       await resetScenario();
+      setCompletedIds(new Set());
       setScenario(await getScenario());
       setExpandedBeat(null);
     } finally {
@@ -145,10 +156,10 @@ export function ScenarioRunner() {
               <div className="flex gap-4">
                 <div
                   className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
-                    beat.done ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "text-muted-foreground"
+                    isDone(beat.id) ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "text-muted-foreground"
                   }`}
                 >
-                  {beat.done ? <Check className="h-4 w-4" /> : String(index + 1).padStart(2, "0")}
+                  {isDone(beat.id) ? <Check className="h-4 w-4" /> : String(index + 1).padStart(2, "0")}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -156,7 +167,7 @@ export function ScenarioRunner() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-semibold">{beat.title}</h3>
-                        {beat.done && (
+                        {isDone(beat.id) && (
                           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
                             Completed
                           </span>
@@ -176,7 +187,7 @@ export function ScenarioRunner() {
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Running...
                         </>
-                      ) : beat.done ? (
+                      ) : isDone(beat.id) ? (
                         <>
                           <RotateCcw className="h-4 w-4" />
                           Run again
