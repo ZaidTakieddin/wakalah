@@ -9,7 +9,47 @@ type PhoneDialogProps = {
   onSubmit: (phoneNumber: string) => void;
 };
 
-const phonePattern = /^\+[1-9][0-9]{4,14}$/;
+type Persona = {
+  value: string;
+  label: string;
+  description: string;
+};
+
+// The Nokia sandbox roster (docs/02 §5.6): fixed behaviour per number, so the
+// demo can stage every story — clean approval, takeover, outage, error path.
+const PERSONAS: Persona[] = [
+  {
+    value: "+99999991001",
+    label: "Amina — clean user",
+    description: "Every network check passes. Transfers get approved.",
+  },
+  {
+    value: "+99999991000",
+    label: "Compromised account",
+    description:
+      "SIM swapped, new device, calls forwarded, number recycled. Expect DENY.",
+  },
+  {
+    value: "+99999990503",
+    label: "Outage simulator",
+    description:
+      "The network always fails (representative of the 0500–0504 family). Expect CHALLENGE — never approval.",
+  },
+  {
+    value: "+99999990404",
+    label: "Error simulator",
+    description:
+      "Every API answers 404 (representative of the 0400/0404/0422 family). Tests error handling.",
+  },
+];
+
+const DEFAULT_PERSONA = PERSONAS[0].value;
+
+function resolveInitial(initialPhone: string): string {
+  return PERSONAS.some((persona) => persona.value === initialPhone)
+    ? initialPhone
+    : DEFAULT_PERSONA;
+}
 
 export function PhoneDialog({
   open,
@@ -18,29 +58,24 @@ export function PhoneDialog({
   onSubmit,
 }: PhoneDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [phone, setPhone] = useState(initialPhone);
-  const [error, setError] = useState("");
+  const [phone, setPhone] = useState(() => resolveInitial(initialPhone));
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
     if (open && !dialog.open) {
-      setPhone(initialPhone);
-      setError("");
+      setPhone(resolveInitial(initialPhone));
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
     }
   }, [initialPhone, open]);
 
+  const selected = PERSONAS.find((persona) => persona.value === phone) ?? PERSONAS[0];
+
   function submit() {
-    const normalized = phone.replace(/[\s()-]/g, "");
-    if (!phonePattern.test(normalized)) {
-      setError("Use international format, for example +99999991000.");
-      return;
-    }
-    onSubmit(normalized);
+    onSubmit(phone);
   }
 
   return (
@@ -74,31 +109,25 @@ export function PhoneDialog({
 
         <label className="mt-6 block">
           <span className="text-sm font-semibold text-slate-800">Phone number</span>
-          <input
+          <select
             autoFocus
-            type="tel"
             value={phone}
-            onChange={(event) => {
-              setPhone(event.target.value);
-              setError("");
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") submit();
-            }}
-            placeholder="+99999991000"
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? "phone-error" : undefined}
-            className={`mt-2 h-12 w-full rounded-xl border px-4 text-base text-slate-950 outline-none transition focus:ring-2 ${
-              error
-                ? "border-red-400 focus:border-red-500 focus:ring-red-100"
-                : "border-slate-200 focus:border-blue-600 focus:ring-blue-100"
-            }`}
-          />
-          {error && (
-            <span id="phone-error" className="mt-2 block text-xs text-red-600">
-              {error}
-            </span>
-          )}
+            onChange={(event) => setPhone(event.target.value)}
+            aria-describedby="persona-description"
+            className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-slate-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+          >
+            {PERSONAS.map((persona) => (
+              <option key={persona.value} value={persona.value}>
+                {persona.value} — {persona.label}
+              </option>
+            ))}
+          </select>
+          <span
+            id="persona-description"
+            className="mt-2 block rounded-xl bg-slate-50 px-4 py-2.5 text-xs leading-5 text-slate-600"
+          >
+            {selected.description}
+          </span>
         </label>
 
         <div className="mt-6 flex gap-3">
