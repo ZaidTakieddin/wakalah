@@ -5,9 +5,9 @@ import { createMandate, evaluateTransaction } from "@/actions/wakalah";
 import { AppHeader } from "@/components/dashboard/app-header";
 import { TransferForm } from "@/components/dashboard/transfer-form";
 import { TransferHistory } from "@/components/dashboard/transfer-history";
-import { PhoneDialog } from "@/components/phone-dialog";
 import { TransferLivePanel } from "@/components/wakalah/transfer-live-panel";
 import {
+  DEFAULT_PERSONA,
   INITIAL_TRANSFERS,
   RECIPIENT_NAMES,
   recipientIdFromName,
@@ -21,7 +21,6 @@ export default function Home() {
   const [amount, setAmount] = useState("500");
   const [note, setNote] = useState("Monthly support");
 
-  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [mandate, setMandate] = useState<MandateResponse | null>(null);
   const [mandateError, setMandateError] = useState<string | null>(null);
@@ -108,7 +107,6 @@ export default function Home() {
   }, []);
 
   async function activatePhone(nextPhoneNumber: string) {
-    setPhoneDialogOpen(false);
     setPhoneNumber(nextPhoneNumber);
     setMandate(null);
     setMandateStatus("loading");
@@ -173,7 +171,7 @@ export default function Home() {
     <main className="min-h-screen bg-[#f5f7fb] text-slate-950">
       <AppHeader />
 
-      <div className="mx-auto grid max-w-385 gap-5 p-4 sm:p-5 xl:grid-cols-[minmax(0,1fr)_460px]">
+      <div className="mx-auto grid max-w-385 gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_460px]">
         <div className="min-w-0 space-y-5">
           <TransferForm
             recipientName={recipientName}
@@ -183,11 +181,12 @@ export default function Home() {
             mandateStatus={mandateStatus}
             isEvaluating={isEvaluating}
             isNewRecipient={isNewRecipient}
+            phoneNumber={phoneNumber}
             onRecipientChange={setRecipientName}
             onAmountChange={setAmount}
             onNoteChange={setNote}
             onSubmit={() => void submitTransfer()}
-            onSetPhone={() => setPhoneDialogOpen(true)}
+            onPhoneSelect={(nextPhoneNumber) => void activatePhone(nextPhoneNumber)}
           />
           {submitError && (
             <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
@@ -206,20 +205,13 @@ export default function Home() {
           runs={runs}
           expandedRunId={expandedRunId}
           isEvaluating={isEvaluating}
-          onSetPhone={() => setPhoneDialogOpen(true)}
+          onSetPhone={() => void activatePhone(DEFAULT_PERSONA)}
           onRetryMandate={() => void activatePhone(phoneNumber)}
           onToggleRun={(transactionId) =>
             setExpandedRunId((current) => (current === transactionId ? null : transactionId))
           }
         />
       </div>
-
-      <PhoneDialog
-        open={phoneDialogOpen}
-        initialPhone={phoneNumber}
-        onClose={() => setPhoneDialogOpen(false)}
-        onSubmit={(nextPhoneNumber) => void activatePhone(nextPhoneNumber)}
-      />
     </main>
   );
 }

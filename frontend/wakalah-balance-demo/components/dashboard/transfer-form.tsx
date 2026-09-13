@@ -1,7 +1,13 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { DEMO_AGENT, DEMO_SCRIPT_HINTS, MANDATE_LIMIT } from "@/lib/demo-data";
+import {
+  DEMO_AGENT,
+  DEMO_SCRIPT_HINTS,
+  MANDATE_LIMIT,
+  NEW_RECIPIENT_SUGGESTION,
+  PERSONAS,
+} from "@/lib/demo-data";
 import type { MandateStatus } from "@/lib/types";
 
 type TransferFormProps = {
@@ -12,11 +18,12 @@ type TransferFormProps = {
   mandateStatus: MandateStatus;
   isEvaluating: boolean;
   isNewRecipient: boolean;
+  phoneNumber: string;
   onRecipientChange: (name: string) => void;
   onAmountChange: (amount: string) => void;
   onNoteChange: (note: string) => void;
   onSubmit: () => void;
-  onSetPhone: () => void;
+  onPhoneSelect: (phoneNumber: string) => void;
 };
 
 export function TransferForm({
@@ -27,11 +34,12 @@ export function TransferForm({
   mandateStatus,
   isEvaluating,
   isNewRecipient,
+  phoneNumber,
   onRecipientChange,
   onAmountChange,
   onNoteChange,
   onSubmit,
-  onSetPhone,
+  onPhoneSelect,
 }: TransferFormProps) {
   const amountValue = Number(amount);
   const invalidAmount =
@@ -64,23 +72,52 @@ export function TransferForm({
         </span>
       </div>
 
+      <div className="mt-6">
+        <span className="text-sm font-semibold text-slate-800">Phone number</span>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Sandbox persona">
+          {PERSONAS.map((persona) => {
+            const selected = phoneNumber === persona.value;
+            return (
+              <button
+                key={persona.value}
+                type="button"
+                title={`${persona.value} — ${persona.description}`}
+                onClick={() => onPhoneSelect(persona.value)}
+                disabled={isEvaluating}
+                aria-pressed={selected}
+                className={`h-11 rounded-xl border px-2 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  selected
+                    ? "border-blue-700 bg-blue-700 text-white shadow-sm"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                {persona.short}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-1.5 text-xs text-slate-500">
+          {mandateStatus === "loading"
+            ? "Activating secure transactions…"
+            : "Pick a number — protection activates instantly."}
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
         <label className="block">
           <span className="text-sm font-semibold text-slate-800">Recipient</span>
-          <input
-            list="recipient-options"
+          <select
             value={recipientName}
             onChange={(event) => onRecipientChange(event.target.value)}
             disabled={isEvaluating}
-            placeholder="Select or enter a recipient"
-            autoComplete="off"
-            className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50"
-          />
-          <datalist id="recipient-options">
-            {recipientOptions.map((name) => (
-              <option key={name} value={name} />
+            className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-950 outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-50"
+          >
+            {[...recipientOptions, NEW_RECIPIENT_SUGGESTION].map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
             ))}
-          </datalist>
+          </select>
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -144,16 +181,11 @@ export function TransferForm({
         </div>
 
         {!isReady ? (
-          <button
-            type="button"
-            onClick={onSetPhone}
-            disabled={mandateStatus === "loading"}
-            className="h-12 w-full rounded-xl bg-slate-950 px-5 text-sm font-bold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60"
-          >
+          <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-center text-xs leading-5 text-slate-500">
             {mandateStatus === "loading"
-              ? "Activating secure transactions…"
-              : "Set phone number to continue"}
-          </button>
+              ? "Setting up secure access…"
+              : "Choose a phone number above to activate WAKALAH protection."}
+          </p>
         ) : (
           <button
             type="submit"

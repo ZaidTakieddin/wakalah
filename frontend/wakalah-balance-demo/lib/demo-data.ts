@@ -65,11 +65,55 @@ export const AUTHORIZED_BENEFICIARY_IDS = [
   "omar-cafe",
 ];
 
+/** Suggested in the recipient dropdown, but intentionally NOT a "known"
+ *  recipient — picking it stages the step-up path. */
+export const NEW_RECIPIENT_SUGGESTION = "Omar Cafe";
+
 /** What each home-page transfer demonstrates. Kept next to the data so the
  *  presenter never has to guess. */
 export const DEMO_SCRIPT_HINTS = [
   "500 to Hessa Al-Mansoori → ALLOW",
   "1,500 to Omar Cafe (new) → CHALLENGE",
   "5,000 anywhere → DENY (over the limit)",
-  "Any other name → DENY (outside the mandate)",
 ] as const;
+
+export type Persona = {
+  value: string;
+  short: string;
+  label: string;
+  description: string;
+};
+
+// The Nokia sandbox roster (docs/02 §5.6): fixed behaviour per number, so the
+// demo can stage every story — clean approval, takeover, outage, error path.
+export const PERSONAS: Persona[] = [
+  {
+    value: "+99999991001",
+    short: "Amina",
+    label: "Amina — clean user",
+    description: "Every network check passes. Transfers get approved.",
+  },
+  {
+    value: "+99999991000",
+    short: "Compromised",
+    label: "Compromised account",
+    description:
+      "SIM swapped, new device, calls forwarded, number recycled. Expect DENY.",
+  },
+  {
+    value: "+99999990503",
+    short: "Outage",
+    label: "Outage simulator",
+    description:
+      "The network always fails (representative of the 0500–0504 family). Expect CHALLENGE — never approval.",
+  },
+  {
+    value: "+99999990404",
+    short: "Error",
+    label: "Error simulator",
+    description:
+      "Every API answers 404 (representative of the 0400/0404/0422 family). Tests error handling.",
+  },
+];
+
+export const DEFAULT_PERSONA = PERSONAS[0].value;
