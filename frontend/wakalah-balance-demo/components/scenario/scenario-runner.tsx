@@ -96,8 +96,8 @@ export function ScenarioRunner() {
 
   if (loading) {
     return (
-      <section className="rounded-2xl border bg-card p-6">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="flex items-center gap-2 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading scenario...
         </div>
@@ -107,17 +107,17 @@ export function ScenarioRunner() {
 
   return (
     <section className="space-y-4">
-      <div className="rounded-2xl border bg-card p-5">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <PlayCircle className="h-5 w-5" />
-              <h2 className="text-lg font-semibold">Scenario Runner</h2>
+              <PlayCircle className="h-5 w-5 text-blue-700" />
+              <h2 className="text-lg font-bold tracking-tight text-slate-950">Scenario Runner</h2>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-slate-500">
               Run the WAKALAH trust scenarios individually or as a full sequence.
             </p>
-            <div className="mt-3 text-xs text-muted-foreground">
+            <div className="mt-3 text-xs text-slate-500">
               {completedBeats} of {beats.length} completed
             </div>
           </div>
@@ -127,7 +127,7 @@ export function ScenarioRunner() {
               type="button"
               onClick={() => void reset()}
               disabled={isBusy}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy === "reset" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
               {busy === "reset" ? "Resetting..." : "Reset"}
@@ -137,7 +137,7 @@ export function ScenarioRunner() {
               type="button"
               onClick={() => void runAll()}
               disabled={isBusy}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               {busy === "all" ? "Running..." : "Run all"}
@@ -152,35 +152,45 @@ export function ScenarioRunner() {
           const isExpanded = expandedBeat === beat.id;
 
           return (
-            <article key={beat.id} className="rounded-2xl border bg-card p-4">
+            <article key={beat.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex gap-4">
                 <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${
-                    isDone(beat.id) ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600" : "text-muted-foreground"
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${
+                    isDone(beat.id)
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : isRunning
+                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
                   }`}
                 >
-                  {isDone(beat.id) ? <Check className="h-4 w-4" /> : String(index + 1).padStart(2, "0")}
+                  {isDone(beat.id) ? (
+                    <Check className="h-4 w-4" />
+                  ) : isRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    String(index + 1).padStart(2, "0")
+                  )}
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold">{beat.title}</h3>
+                        <h3 className="font-bold tracking-tight text-slate-950">{beat.title}</h3>
                         {isDone(beat.id) && (
-                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                             Completed
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">Expected: {beat.expect}</p>
+                      <p className="mt-1 text-sm text-slate-500">Expected: {beat.expect}</p>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => void runBeat(beat.id)}
                       disabled={isBusy}
-                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isRunning ? (
                         <>
@@ -204,7 +214,7 @@ export function ScenarioRunner() {
                   {beat.labels.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {beat.labels.map((label) => (
-                        <span key={label} className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+                        <span key={label} className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-500">
                           {label}
                         </span>
                       ))}
@@ -214,15 +224,15 @@ export function ScenarioRunner() {
                   <button
                     type="button"
                     onClick={() => setExpandedBeat(isExpanded ? null : beat.id)}
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-slate-900"
                   >
                     <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                     {isExpanded ? "Hide details" : "Show details"}
                   </button>
 
                   {isExpanded && (
-                    <div className="mt-3 rounded-xl border bg-muted/30 p-4">
-                      <p className="text-sm leading-6 text-muted-foreground">{beat.narration}</p>
+                    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                      <p className="text-sm leading-6 text-slate-500">{beat.narration}</p>
                     </div>
                   )}
                 </div>
@@ -234,3 +244,4 @@ export function ScenarioRunner() {
     </section>
   );
 }
+
